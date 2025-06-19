@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SeismicCombat</title>
+    <style>
+        /* === ОСНОВНЫЕ СТИЛИ BODY === */
+        body {
+            margin: 0;
+            padding: 0;
+            background: 
+                radial-gradient(circle at 20% 80%, rgba(120, 119, 198, 0.3) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(255, 119, 198, 0.3) 0%, transparent 50%),
+                radial-gradient(circle at 40% 40%, rgba(120, 255, 198, 0.2) 0%, transparent 50%),
+                linear-gradient(135deg, #667eea 0%, #764ba2 50%, #667eea 100%);
+            background-size: 300% 300%;
+            animation: gradientShift 8s ease infinite;
+            background-attachment: fixed;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: white;
+            overflow: hidden;
+        }
+
+        @keyframes gradientShift {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+
+        @keyframes titleShimmer {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+
+        @keyframes textShimmer {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+
+        @keyframes float1 {
+            0%, 100% { transform: translateY(0px) translateX(0px); opacity: 0.7; }
+            50% { transform: translateY(-20px) translateX(10px); opacity: 1; }
+        }
+
+        @keyframes float2 {
+            0%, 100% { transform: translateY(0px) translateX(0px); opacity: 0.6; }
+            50% { transform: translateY(-15px) translateX(-15px); opacity: 1; }
+        }
+
+        @keyframes float3 {
+            0%, 100% { transform: translateY(0px) translateX(0px); opacity: 0.8; }
+            50% { transform: translateY(-25px) translateX(5px); opacity: 1; }
+        }
+
+        .game-container {
+            text-align: center;
+            background: 
+                linear-gradient(135deg, rgba(0,0,0,0.95) 0%, rgba(20,20,50,0.9) 50%, rgba(0,0,0,0.95) 100%);
+            backdrop-filter: blur(30px);
+            -webkit-backdrop-filter: blur(30px);
+            border: 3px solid transparent;
+            background-clip: padding-box;
+            padding: 15px;
+            border-radius: 25px;
+            box-shadow: 
+                0 40px 80px rgba(0, 0, 0, 0.9),
+                0 0 120px rgba(102, 126, 234, 0.5),
+                inset 0 2px 0 rgba(255, 255, 255, 0.3),
+                inset 0 -2px 0 rgba(255, 255, 255, 0.1),
+                0 0 0 1px rgba(255, 255, 255, 0.1);
+            position: relative;
+            overflow: hidden;
+            animation: containerFloat 6s ease-in-out infinite;
+            width: 98vw;
+            height: 98vh;
+            max-width: 1600px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        @keyframes containerFloat {
+            0%, 100% { transform: translateY(0px) scale(1); }
+            50% { transform: translateY(-5px) scale(1.002); }
+        }
+
+        .game-container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: 
+                radial-gradient(circle at 10% 20%, rgba(255, 215, 0, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 90% 80%, rgba(0, 191, 255, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 50% 50%, rgba(255, 105, 180, 0.05) 0%, transparent 50%);
+            animation: particleMove 10s ease-in-out infinite;
+            pointer-events: none;
+        }
+
+        @keyframes particleMove {
+            0%, 100% { transform: translateX(0px) translateY(0px) rotate(0deg); }
+            33% { transform: translateX(30px) translateY(-20px) rotate(120deg); }
+            66% { transform: translateX(-20px) translateY(30px) rotate(240deg); }
+        }
+
+        .character-menu {
+            background: 
+                linear-gradient(135deg, 
+                    rgba(0,0,0,0.98) 0%, 
+                    rgba(30,30,60,0.95) 30%,
+                    rgba(60,30,90,0.95) 70%,
+                    rgba(0,0,0,0.98) 100%);
+            backdrop-filter: blur(25px);
+            padding: 25px;
+            border-radius: 25px;
+            border: 2px solid rgba(255, 215, 0, 0.4);
+            box-shadow: 
+                0 30px 60px rgba(0, 0, 0, 0.9),
+                inset 0 2px 0 rgba(255, 255, 255, 0.2),
+                0 0 80px rgba(255, 215, 0, 0.2);
+            position: relative;
+            overflow: hidden;
+            animation: menuSlideIn 1.2s cubic-bezier(0.4, 0, 0.2, 1);
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        @keyframes menuSlideIn {
+            0% {
+                opacity: 0;
+                transform: translateY(50px) scale(0.9);
+                filter: blur(10px);
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0px) scale(1);
+                filter: blur(0px);
+            }
+        }
+
+        .character-menu::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: 
+                conic-gradient(from 0deg, 
+                    transparent, 
+                    rgba(255, 215, 0, 0.1), 
+                    transparent, 
+                    rgba(0, 191, 255, 0.1), 
+                    transparent);
+            animation: menuRotate 20s linear infinite;
+            pointer-events: none;
+        }
+
+        @keyframes menuRotate {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .character-selector {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 30px 0;
+            gap: 30px;
+            position: relative;
+            z-index: 10;
+        }
+
+        .character-card {
+            text-align: center;
+            min-width: 320px;
+            position: relative;
+            perspective: 1000px;
+            animation: cardFloat 5s ease-in-out infinite;
+        }
+
+        @keyframes cardFloat {
+            0%, 100% { transform: translateY(0px) rotateY(0deg); }
+            25% { transform: translateY(-8px) rotateY(2deg); }
+            50% { transform: translateY(0px) rotateY(0deg); }
+            75% { transform: translateY(-5px) rotateY(-2deg); }
+        }
+
+        .character-portrait {
+            background: 
+                linear-gradient(145deg, 
+                    rgba(255, 215, 0, 0.15), 
+                    rgba(255, 215, 0, 0.05),
+                    rgba(0, 191, 255, 0.1));
+            padding: 25px;
+            border-radius: 20px;
+            margin-bottom: 20px;
+            border: 3px solid transparent;
+            background-clip: padding-box;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 
+                0 20px 40px rgba(0, 0, 0, 0.6),
+                inset 0 2px 0 rgba(255, 255, 255, 0.2);
+        }
+
+        .character-portrait::before {
+            content: '';
+            position: absolute;
+            top: -2px;
+            left: -2px;
+            right: -2px;
+            bottom: -2px;
+            background: linear-gradient(45deg, 
+                #FFD700, #FF6B35, #F7931E, #FFD700, #00D4FF, #FFD700);
+            background-size: 300% 300%;
+            border-radius: 20px;
+            z-index: -1;
+            animation: borderGlow 3s ease-in-out infinite;
+        }
+
+        @keyframes borderGlow {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+
+        .character-portrait:hover {
+            transform: translateY(-10px) scale(1.05);
+            box-shadow: 
+                0 30px 60px rgba(0, 0, 0, 0.8),
+                0 0 100px rgba(255, 215, 0, 0.5),
+                inset 0 2px 0 rgba(255, 255, 255, 0.3);
+        }
+
+        .character-image {
+            width: 140px;
+            height: 140px;
+            object-fit: cover;
+            border-radius: 15px;
+            border: 4px solid #FFD700;
+            transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+            filter: drop-shadow(0 10px 20px rgba(0, 0, 0, 0.6));
+            position: relative;
+            z-index: 5;
+        }
+
+        .character-image:hover {
+            transform: scale(1.1) rotateY(5deg);
+            filter: 
+                drop-shadow(0 15px 30px rgba(0, 0, 0, 0.8))
+                brightness(1.1)
+                contrast(1.1);
+        }
+
+        .character-name {
+            color: #FFD700;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.6rem;
+            font-weight: 900;
+            margin: 15px 0;
+            text-shadow: 
+                0 0 30px rgba(255, 215, 0, 0.9),
+                0 0 60px rgba(255, 215, 0, 0.5),
+                3px 3px 6px rgba(0, 0, 0, 0.8);
+            animation: nameGlow 4s ease-in-out infinite;
+            background: linear-gradient(45deg, #FFD700, #FFA500, #FFD700);
+            background-size: 200% 200%;
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        @keyframes nameGlow {
+            0%, 100% { 
+                filter: brightness(1);
+                transform: scale(1);
+            }
+            50% { 
+                filter: brightness(1.3);
+                transform: scale(1.02);
+            }
+        }
+
+        .character-description {
+            color: #E0E0E0;
+            font-size: 15px;
+            line-height: 1.5;
+            max-width: 280px;
+            margin: 0 auto;
+            opacity: 0.9;
+            transition: all 0.4s ease;
+            text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.7);
+        }
+
+        .nav-button {
+            background: 
+                linear-gradient(145deg, 
+                    rgba(44, 62, 80, 0.9), 
+                    rgba(52, 73, 94, 0.9),
+                    rgba(44, 62, 80, 0.9));
+            color: #FFD700;
+            border: 2px solid rgba(255, 215, 0, 0.5);
+            padding: 18px 22px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 24px;
+            font-weight: bold;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 
+                0 15px 30px rgba(0, 0, 0, 0.6),
+                inset 0 2px 0 rgba(255, 255, 255, 0.2),
+                0 0 30px rgba(255, 215, 0, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .nav-button::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            background: radial-gradient(circle, rgba(255, 215, 0, 0.3) 0%, transparent 70%);
+            transition: all 0.4s ease;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        .nav-button:hover {
+            transform: translateY(-5px) scale(1.1);
+            box-shadow: 
+                0 20px 40px rgba(0, 0, 0, 0.8),
+                0 0 50px rgba(255, 215, 0, 0.6),
+                inset 0 2px 0 rgba(255, 255, 255, 0.3);
+            border-color: rgba(255, 215, 0, 0.8);
+        }
+
+        .nav-button:hover::before {
+            width: 100px;
+            height: 100px;
+        }
+
+        .confirm-button {
+            background: 
+                linear-gradient(145deg, 
+                    #E74C3C, 
+                    #C0392B, 
+                    #E74C3C);
+            color: white;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            padding: 18px 35px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 16px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 
+                0 20px 40px rgba(231, 76, 60, 0.5),
+                inset 0 2px 0 rgba(255, 255, 255, 0.3),
+                0 0 60px rgba(231, 76, 60, 0.3);
+            position: relative;
+            overflow: hidden;
+            margin-top: 20px;
+        }
+
+        .confirm-button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, 
+                transparent, 
+                rgba(255, 255, 255, 0.3), 
+                transparent);
+            transition: all 0.6s ease;
+        }
+
+        .confirm-button:hover {
+            transform: translateY(-8px) scale(1.05);
+            box-shadow: 
+                0 25px 50px rgba(231, 76, 60, 0.7),
+                0 0 80px rgba(231, 76, 60, 0.5),
+                inset 0 2px 0 rgba(255, 255, 255, 0.4);
+            border-color: rgba(255, 255, 255, 0.6);
+        }
+
+        .confirm-button:hover::before {
+            left: 100%;
+        }
+
+        .difficulty-menu {
+            background: 
+                linear-gradient(135deg, 
+                    rgba(40,40,80,0.98) 0%, 
+                    rgba(80,40,40,0.95) 30%,
+                    rgba(40,80,40,0.95) 70%,
+                    rgba(80,40,80,0.98) 100%);
+            backdrop-filter: blur(25px);
+            padding: 25px;
+            border-radius: 25px;
+            border: 2px solid rgba(255, 107, 107, 0.4);
+            animation: menuSlideIn 1.2s ease-out 0.3s both;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            overflow-y: auto;
+            box-shadow: 
+                0 30px 60px rgba(0, 0, 0, 0.9),
+                inset 0 2px 0 rgba(255, 255, 255, 0.2);
+        }
+
+        .difficulty-buttons {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin: 25px 0;
+        }
+
+        .difficulty-btn {
+            padding: 25px 30px;
+            border: 3px solid rgba(255, 255, 255, 0.2);
+            border-radius: 20px;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 15px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            min-width: 160px;
+            box-shadow: 
+                0 15px 30px rgba(0, 0, 0, 0.5),
+                inset 0 2px 0 rgba(255, 255, 255, 0.2);
+        }
+
+        .difficulty-btn:hover {
+            transform: translateY(-8px) scale(1.05);
+            border-color: rgba(255, 255, 255, 0.5);
+            box-shadow: 
+                0 20px 40px rgba(0, 0, 0, 0.7),
+                inset 0 2px 0 rgba(255, 255, 255, 0.3);
+        }
+
+        .controls-section {
+            background: rgba(0, 0, 0, 0.4);
+            padding: 20px;
+            border-radius: 15px;
+            margin: 20px 0;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: all 0.4s ease;
+            backdrop-filter: blur(10px);
+        }
+
+        .controls-section:hover {
+            background: rgba(0, 0, 0, 0.6);
+            border-color: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+        }
+
+        #gameArea {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        canvas {
+            border: 3px solid transparent;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 50%, #87CEEB 100%);
+            border-radius: 15px;
+            box-shadow: 
+                0 15px 30px rgba(0, 0, 0, 0.7),
+                inset 0 0 40px rgba(255, 255, 255, 0.1),
+                0 0 80px rgba(30, 60, 114, 0.8),
+                0 0 0 1px rgba(255, 255, 255, 0.2);
+            cursor: crosshair;
+            transition: all 0.4s ease;
+            position: relative;
+            overflow: hidden;
+            image-rendering: pixelated;
+            image-rendering: -moz-crisp-edges;
+            image-rendering: crisp-edges;
+            width: 100%;
+            height: 65vh;
+            flex-shrink: 0;
+        }
+
+        canvas:hover {
+            box-shadow: 
+                0 20px 40px rgba(0, 0, 0, 0.8),
+                inset 0 0 50px rgba(255, 255, 255, 0.15),
+                0 0 100px rgba(30, 60, 114, 1),
+                0 0 0 2px rgba(255, 255, 255, 0.3);
+        }
+
+        .health-bar {
+            background: linear-gradient(135deg, #2a2a2a, #1a1a1a);
+            height: 25px;
+            border-radius: 12px;
+            margin: 0;
+            overflow: hidden;
+            border: 2px solid transparent;
+            background-clip: padding-box;
+            box-shadow: 
+                inset 0 2px 6px rgba(0, 0, 0, 0.6),
+                0 2px 10px rgba(255, 215, 0, 0.3);
+            position: relative;
+        }
+    </style>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family:Rajdhani:wght@400;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="game-container">
+        <h1 style="background: linear-gradient(45deg, #FFD700 0%, #FFA500 25%, #FF6B35 50%, #FFA500 75%, #FFD700 100%); background-size: 200% 200%; animation: titleShimmer 3s ease-in-out infinite; background-clip: text; -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-family: 'Orbitron', sans-serif; font-size: 2.2rem; margin-bottom: 15px; text-shadow: 0 0 50px rgba(255, 215, 0, 0.8);">
+            ⚔️ SEISMIC COMBAT ⚔️
+        </h1>
+        
+        <!-- Экран выбора персонажа -->
+        <div id="characterMenu" class="character-menu">
+            <!-- Анимированные частицы фона -->
+            <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; overflow: hidden;">
+                <div style="position: absolute; width: 4px; height: 4px; background: radial-gradient(circle, #FFD700, transparent); border-radius: 50%; top: 20%; left: 10%; animation: float1 8s ease-in-out infinite;"></div>
+                <div style="position: absolute; width: 3px; height: 3px; background: radial-gradient(circle, #00BFFF, transparent); border-radius: 50%; top: 60%; left: 80%; animation: float2 6s ease-in-out infinite;"></div>
+                <div style="position: absolute; width: 5px; height: 5px; background: radial-gradient(circle, #FF69B4, transparent); border-radius: 50%; top: 80%; left: 20%; animation: float3 10s ease-in-out infinite;"></div>
+                <div style="position: absolute; width: 2px; height: 2px; background: radial-gradient(circle, #32CD32, transparent); border-radius: 50%; top: 30%; left: 70%; animation: float1 7s ease-in-out infinite;"></div>
+                <div style="position: absolute; width: 4px; height: 4px; background: radial-gradient(circle, #FF4500, transparent); border-radius: 50%; top: 70%; left: 50%; animation: float2 9s ease-in-out infinite;"></div>
+            </div>
+            
+            
+            
+            <div class="character-selector">
+                <button id="prevCharBtn" class="nav-button">
+                    ◄
+                </button>
+                
+                <div class="character-card">
+                    <div class="character-portrait">
+                        <img id="characterImg" src="assets/TOM.png" alt="Персонаж" class="character-image">
+                    </div>
+                    <h3 id="characterName" class="character-name">Tom.J</h3>
+                    <p id="characterDesc" class="character-description">The Great Warrior with AI Demons</p>
+                </div>
+                
+                <button id="nextCharBtn" class="nav-button">
+                    ►
+                </button>
+            </div>
+            
+            <div style="text-align: center; margin-top: 30px;">
+                <button id="confirmCharBtn" class="confirm-button">
+                    ✨ CHOOSE A HERO. ✨
+                </button>
+            </div>
+        </div>
+
+        <!-- Экран выбора сложности -->
+        <div id="difficultyMenu" class="difficulty-menu" style="display: none;">
+            <h2 style="color: #FFD700; margin-top: 0; font-family: 'Rajdhani', sans-serif; font-size: 2rem; text-shadow: 0 0 25px rgba(255, 215, 0, 0.8); text-align: center;">
+                🎯 SELECT A DIFFICULTY LEVEL. 🎯
+            </h2>
+            
+            <div class="difficulty-buttons">
+                <button onclick="startGame('easy')" class="start-btn difficulty-btn" style="background: linear-gradient(145deg, #27AE60, #229954); box-shadow: 0 15px 30px rgba(39, 174, 96, 0.4);">
+                    <div style="font-size: 1.5rem; margin-bottom: 5px;">🟢</div>
+                    <div>НОВИЧОК</div>
+                    <div style="font-size: 0.8rem; opacity: 0.8; margin-top: 5px;">MAGA 1-3</div>
+                </button>
+                
+                <button onclick="startGame('medium')" class="start-btn difficulty-btn medium" style="background: linear-gradient(145deg, #F39C12, #E67E22); box-shadow: 0 15px 30px rgba(243, 156, 18, 0.4);">
+                    <div style="font-size: 1.5rem; margin-bottom: 5px;">🟡</div>
+                    <div>ВОИН</div>
+                    <div style="font-size: 0.8rem; opacity: 0.8; margin-top: 5px;">MAGA 4-7</div>
+                </button>
+                
+                <button onclick="startGame('hard')" class="start-btn difficulty-btn hard" style="background: linear-gradient(145deg, #E74C3C, #C0392B); box-shadow: 0 15px 30px rgba(231, 76, 60, 0.4);">
+                    <div style="font-size: 1.5rem; margin-bottom: 5px;">🔴</div>
+                    <div>МАСТЕР</div>
+                    <div style="font-size: 0.8rem; opacity: 0.8; margin-top: 5px;">MAGA 8-9</div>
+                </button>
+            </div>
+            
+            <div class="controls-section">
+                <h3 style="color: #FFD700; margin-bottom: 15px; font-family: 'Orbitron', sans-serif;">⚡ WARRIOR CONTROLS ⚡</h3>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin: 15px 0;">
+                    <div style="background: rgba(135, 206, 235, 0.1); padding: 15px; border-radius: 10px; border: 1px solid rgba(135, 206, 235, 0.3);">
+                        <p style="color: #87CEEB; font-weight: bold; margin-bottom: 12px;">🎮 MOVE</p>
+                        <p><strong>A/D</strong> - LEFT RIGHT</p>
+                        <p><strong>W</strong> - JUMP</p>
+                        <p><strong>S</strong> - BLOCK</p>
+                    </div>
+                    <div style="background: rgba(255, 182, 193, 0.1); padding: 15px; border-radius: 10px; border: 1px solid rgba(255, 182, 193, 0.3);">
+                        <p style="color: #FFB6C1; font-weight: bold; margin-bottom: 12px;">⚔️ ATTACK</p>
+                        <p><strong>ЛКМ</strong> - LIGHT ATTACK</p>
+                        <p><strong>ПКМ</strong> - HEAVY ATTACK</p>
+                        <p><strong>Q</strong> - ABILITY Tom.J</p>
+                    </div>
+                </div>
+                
+                <div style="background: linear-gradient(135deg, rgba(255, 215, 0, 0.15), rgba(255, 215, 0, 0.05)); padding: 20px; border-radius: 12px; border: 2px solid rgba(255, 215, 0, 0.4); margin-top: 20px;">
+                    <h4 style="color: #FFD700; margin-bottom: 12px;">🛡️ COMBAT MASTERY</h4>
+                    <div style="text-align: left; color: #E0E0E0;">
+                        <p>🎯 <strong style="color: #00FFFF;">Parry:</strong>Press S at the moment of an enemys attack</p>
+                        <p>💥 <strong style="color: #FF00FF;">Counterattack:</strong> LMB after a successful parry</p>
+                        <p>🚀 <strong style="color: #00FF7F;">Directional Jumps:</strong> A/D + W simultaneously</p>
+                        <p>⚡ <strong style="color: #32CD32;">:</strong> Q for ABILITY</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- ИГРОВАЯ ОБЛАСТЬ -->
+        <div id="gameArea" style="display: none;">
+            <!-- Кнопки управления игрой -->
+            <div style="display: flex; justify-content: center; gap: 15px; margin-bottom: 10px;">
+                <button onclick="restartGame()" style="background: linear-gradient(135deg, #4CAF50, #45A049); color: white; border: none; padding: 12px 25px; border-radius: 15px; cursor: pointer; font-size: 16px; font-weight: bold; box-shadow: 0 10px 25px rgba(76, 175, 80, 0.5); transition: all 0.3s ease; font-family: 'Orbitron', sans-serif; text-transform: uppercase; letter-spacing: 1px;" onmouseover="this.style.transform='translateY(-3px) scale(1.05)'; this.style.boxShadow='0 15px 35px rgba(76, 175, 80, 0.7)';" onmouseout="this.style.transform='translateY(0px) scale(1)'; this.style.boxShadow='0 10px 25px rgba(76, 175, 80, 0.5)';">
+                    🔄 NEW FIGHT
+                </button>
+                <button onclick="backToMenu()" style="background: linear-gradient(135deg, #6C757D, #5A6268); color: white; border: none; padding: 12px 25px; border-radius: 15px; cursor: pointer; font-size: 16px; font-weight: bold; box-shadow: 0 10px 25px rgba(108, 117, 125, 0.5); transition: all 0.3s ease; font-family: 'Orbitron', sans-serif; text-transform: uppercase; letter-spacing: 1px;" onmouseover="this.style.transform='translateY(-3px) scale(1.05)'; this.style.boxShadow='0 15px 35px rgba(108, 117, 125, 0.7)';" onmouseout="this.style.transform='translateY(0px) scale(1)'; this.style.boxShadow='0 10px 25px rgba(108, 117, 125, 0.5)';">
+                    📋 NEW FIGHT
+                </button>
+            </div>
+            
+            <canvas id="gameCanvas" width="1200" height="650"></canvas>
+            
+            <!-- Полоски здоровья и имена игроков -->
+            <div style="display: flex; justify-content: space-between; margin-top: 15px; gap: 20px;">
+                <!-- Игрок -->
+                <div style="flex: 1; background: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 100%); backdrop-filter: blur(15px); border: 2px solid rgba(255, 215, 0, 0.3); padding: 20px; border-radius: 20px; box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4), 0 0 50px rgba(255, 215, 0, 0.2); position: relative; overflow: hidden;">
+                    <!-- Светящийся фон для игрока -->
+                    <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: radial-gradient(circle at 50% 50%, rgba(255, 215, 0, 0.1) 0%, transparent 70%); pointer-events: none;"></div>
+                    
+                    <h3 style="color: #FFD700; margin: 0 0 15px 0; font-size: 1.4rem; text-align: center; font-family: 'Orbitron', sans-serif; text-shadow: 0 0 20px rgba(255, 215, 0, 0.8); position: relative; z-index: 2;">🔥 ИГРОК</h3>
+                    <div class="health-bar">
+                        <div id="playerHealth" style="width: 100%; background: linear-gradient(90deg, #FF4444, #FF6B6B, #FF8888); height: 100%; border-radius: 12px; transition: width 0.3s ease; box-shadow: 0 0 20px rgba(255, 68, 68, 0.5);"></div>
+                        <div id="playerHealthText" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 16px; color: white; text-shadow: 2px 2px 4px rgba(0,0,0,0.8); font-family: 'Orbitron', sans-serif;">100%</div>
+                    </div>
+                </div>
+
+                <!-- ИИ Противник -->
+                <div style="flex: 1; background: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 100%); backdrop-filter: blur(15px); border: 2px solid rgba(0, 191, 255, 0.3); padding: 20px; border-radius: 20px; box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4), 0 0 50px rgba(0, 191, 255, 0.2); position: relative; overflow: hidden;">
+                    <!-- Светящийся фон для ИИ -->
+                    <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: radial-gradient(circle at 50% 50%, rgba(0, 191, 255, 0.1) 0%, transparent 70%); pointer-events: none;"></div>
+                    
+                    <h3 style="color: #00BFFF; margin: 0 0 15px 0; font-size: 1.4rem; text-align: center; font-family: 'Orbitron', sans-serif; text-shadow: 0 0 20px rgba(0, 191, 255, 0.8); position: relative; z-index: 2;">🤖 ИИ ПРОТИВНИК</h3>
+                    <div class="health-bar">
+                        <div id="botHealth" style="width: 100%; background: linear-gradient(90deg, #4CAF50, #66BB6A, #81C784); height: 100%; border-radius: 12px; transition: width 0.3s ease; box-shadow: 0 0 20px rgba(76, 175, 80, 0.5);"></div>
+                        <div id="botHealthText" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 16px; color: white; text-shadow: 2px 2px 4px rgba(0,0,0,0.8); font-family: 'Orbitron', sans-serif;">100%</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="game.js"></script>
+</body>
+</html>
