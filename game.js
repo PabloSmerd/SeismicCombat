@@ -81,9 +81,9 @@ const CHARACTERS = [
     description: "Mind and Knowledge of Magnitudes.",
     element: "electric",
     images: {
-      idle: "/assets/XEALIST.png",
-      attack: "/assets/XEALISTAAA.png",
-      portrait: "/assets/XEALIST.png",
+      idle: "assets/XEALIST.png",
+      attack: "assets/XEALISTAAA.png",
+      portrait: "assets/XEALIST.png",
       shield: "assets/Xeakistblock.png"
     }
   },
@@ -94,9 +94,9 @@ const CHARACTERS = [
     description: "He is everywhere and nowhere.",
     element: "electric",
     images: {
-      idle: "/assets/DeFi.NinJa_Elijah.png",
-      attack: "/assets/DeFi.NinjaAttack.png",
-      portrait: "/assets/DeFi.NinJa_Elijah.png",
+      idle: "assets/DeFi.NinJa_Elijah.png",
+      attack: "assets/DeFi.NinjaAttack.png",
+      portrait: "assets/DeFi.NinJa_Elijah.png",
       shield: "assets/Defi.Ninja.block.png"
     }
   },
@@ -107,9 +107,9 @@ const CHARACTERS = [
     description: "Just a nice guy",
     element: "electric",
     images: {
-      idle: "/assets/vludblet.png",
-      attack: "/assets/vludbletattack.png",
-      portrait: "/assets/vludblet.png",
+      idle: "assets/vludblet.png",
+      attack: "assets/vludbletattack.png",
+      portrait: "assets/vludblet.png",
       shield: "assets/vludbock.png"
     }
   },
@@ -120,9 +120,9 @@ const CHARACTERS = [
     description: "Heart of Magnitude.",
     element: "electric",
     images: {
-      idle: "/assets/Aashi.png",
-      attack: "/assets/AashiAttack.png",
-      portrait: "/assets/Aashi.png",
+      idle: "assets/Aashi.png",
+      attack: "assets/AashiAttack.png",
+      portrait: "assets/Aashi.png",
       shield: "assets/Aashiblock.png"
     }
   },
@@ -133,9 +133,9 @@ const CHARACTERS = [
     description: "The Gray Cardinal of This World",
     element: "electric",
     images: {
-      idle: "/assets/Heathcliff.png",
-      attack: "/assets/heatcif.png",
-      portrait: "/assets/Heathcliff.png",
+      idle: "assets/Heathcliff.png",
+      attack: "assets/heatcif.png",
+      portrait: "assets/Heathcliff.png",
       shield: "assets/healblock.png"
     }
   },
@@ -146,9 +146,9 @@ const CHARACTERS = [
     description: "This isn’t just a shark; it’s MATT.",
     element: "electric",
     images: {
-      idle: "/assets/Matt.png",
-      attack: "/assets/mattatack.png",
-      portrait: "/assets/Matt.png",
+      idle: "assets/Matt.png",
+      attack: "assets/mattatack.png",
+      portrait: "assets/Matt.png",
       shield: "assets/Mattblock.png"
     }
   },
@@ -159,9 +159,9 @@ const CHARACTERS = [
     description: "His strength lies far beyond his fists",
     element: "electric",
     images: {
-      idle: "/assets/ZAIN.png",
-      attack: "/assets/ZAINATA.png",
-      portrait: "/assets/ZAIN.png",
+      idle: "assets/ZAIN.png",
+      attack: "assets/ZAINATA.png",
+      portrait: "assets/ZAIN.png",
       shield: "/assets/!ZAINblock.png"
     }
   },
@@ -229,7 +229,7 @@ const ARENA_BACKGROUNDS = [
     },
     {
         name: "Лесная поляна", 
-        file: "/assets/background2.png",
+        file: "assets/background2.png",
         description: "Густой лес с солнечными лучами"
     },
     {
