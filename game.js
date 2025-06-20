@@ -55,9 +55,9 @@ const CHARACTERS = [
     description: "He is everywhere, omnipresent, upholding order in the realm of magnitudes.",
     element: "electric",
     images: {
-      idle: "/assets/NOXX.png",
-      attack: "/assets/NOXX_FIGHTER.png",
-      portrait: "/assets/NOXX.png",
+      idle: "assets/NOXX.png",
+      attack: "assets/NOXX_FIGHTER.png",
+      portrait: "assets/NOXX.png",
       shield: "assets/Noxx_block.png"
     }
   },
@@ -68,9 +68,9 @@ const CHARACTERS = [
     description: "Quintessence of Power GIF",
     element: "electric",
     images: {
-      idle: "/assets/Burhanf.png",
-      attack: "/assets/Burhanatack.png",
-      portrait: "/assets/Burhanf.png",
+      idle: "assets/Burhanf.png",
+      attack: "assets/Burhanatack.png",
+      portrait: "assets/Burhanf.png",
       shield: "assets/burhanblock.png"
     }
   },
@@ -480,6 +480,7 @@ function drawCommonArenaElements(ctx) {
     // Никаких дополнительных элементов - чистый PNG фон
     // Платформа для персонажей уже есть в коде Fighter класса
 }
+
 class Fighter {
     constructor(x, y, color, name, specialAttack, useImages = false) {
         this.x = x;
@@ -488,8 +489,8 @@ class Fighter {
         this.height = 220;
         this.color = color;
         this.name = name;
-        this.health = 100;
-        this.maxHealth = 100;
+        this.health = 300;
+        this.maxHealth = 300;
         this.velocityX = 0;
         this.velocityY = 0;
         this.onGround = true;
@@ -525,17 +526,27 @@ class Fighter {
         this.lastParryTime = 0;
         
         // УЛУЧШЕННАЯ СИСТЕМА ДВИЖЕНИЯ
-        this.moveSpeed = 13; // Базовая скорость движения
-        this.jumpPower = 24; // Сила прыжка
-        this.airControl = 0.8; // Контроль в воздухе (0-1)
-        this.landingEffect = 0; // Эффект приземления
-        this.landingPrep = false; // Подготовка к приземлению
-        this.isMovingLeft = false; // Движется ли влево
-        this.isMovingRight = false; // Движется ли вправо
-        this.coyoteTime = 0; // "Койот-тайм" для прыжков с края
-        this.jumpBuffer = 0; // Буфер для прыжков
-        this.jumpEffect = 0; // Эффект прыжка
+        this.moveSpeed = 13;
+        this.jumpPower = 24;
+        this.airControl = 0.8;
+        this.landingEffect = 0;
+        this.landingPrep = false;
+        this.isMovingLeft = false;
+        this.isMovingRight = false;
+        this.coyoteTime = 0;
+        this.jumpBuffer = 0;
+        this.jumpEffect = 0;
         this.useImages = useImages;
+        
+        // ✨ НОВЫЕ СВОЙСТВА ДЛЯ СПОСОБНОСТЕЙ ✨
+        this.magnitudeWaves = [];      // Массив волн для Lyron
+        this.abilityCooldown = 0;      // Кулдаун способности (в кадрах)
+        this.abilityDuration = 0;      // Длительность эффекта
+        this.abilityActive = false;    // Активна ли способность
+        this.hitParticles = [];        // Частицы эффектов попадания
+        // 🚀 НОВЫЕ СВОЙСТВА ДЛЯ ОТТАЛКИВАНИЯ
+        this.isKnockedBack = false;    // Находится ли в состоянии отталкивания
+        this.knockbackResistance = 1.0; // Сопротивление отталкиванию (1.0 = норма)
     }
     
     // СИСТЕМА АНИМАЦИИ АТАК
@@ -607,13 +618,28 @@ class Fighter {
         this.y += this.velocityY;
         
         // Ограничения экрана с небольшой амортизацией
+        // 🚀 УЛУЧШЕННЫЕ ОГРАНИЧЕНИЯ ЭКРАНА С ОТСКОКОМ ОТ СТЕН
         if (this.x < 0) {
             this.x = 0;
-            this.velocityX = Math.max(0, this.velocityX); // Предотвращаем застревание
+            // При сильном отталкивании - отскок от левой стены
+            if (this.velocityX < -15) {
+                this.velocityX = Math.abs(this.velocityX) * 0.6; // Отскок с потерей 40% скорости
+                this.screenShake = Math.max(this.screenShake, 8);
+                console.log(`💥 Отскок от левой стены! Скорость: ${this.velocityX.toFixed(1)}`);
+            } else {
+                this.velocityX = Math.max(0, this.velocityX);
+            }
         }
         if (this.x > canvas.width - this.width) {
             this.x = canvas.width - this.width;
-            this.velocityX = Math.min(0, this.velocityX);
+            // При сильном отталкивании - отскок от правой стены
+            if (this.velocityX > 15) {
+                this.velocityX = -Math.abs(this.velocityX) * 0.6; // Отскок с потерей 40% скорости
+                this.screenShake = Math.max(this.screenShake, 8);
+                console.log(`💥 Отскок от правой стены! Скорость: ${this.velocityX.toFixed(1)}`);
+            } else {
+                this.velocityX = Math.min(0, this.velocityX);
+            }
         }
         
         // Приземление с эффектом
@@ -686,13 +712,21 @@ class Fighter {
         
         // Сброс атаки
         if (this.attackFrame === 0) {
-            this.isAttacking = false;
-            this.attackType = 'none';
-            this.attackPhase = 'none';
-            this.attackProgress = 0;
-        } else {
-            this.updateAttackAnimation();
-        }
+        this.isAttacking = false;
+        this.attackType = 'none';
+        this.attackPhase = 'none';
+        this.attackProgress = 0;
+    } else {
+        this.updateAttackAnimation();
+    }
+    
+    // ✨ НОВЫЕ ОБНОВЛЕНИЯ ДЛЯ СПОСОБНОСТЕЙ ✨
+    this.updateMagnitudeWaves();
+    this.updateHitParticles();
+    
+    // Обновляем кулдаун способности
+    if (this.abilityCooldown > 0) this.abilityCooldown--;
+    if (this.abilityDuration > 0) this.abilityDuration--;
     }
     
     draw(ctx) {
@@ -787,6 +821,9 @@ if (this.useImages && imagesLoaded) {
         
         // UI элементы персонажа
         this.drawCharacterUI(ctx, drawX, drawY);
+         this.drawMagnitudeWaves(ctx, drawX, drawY);
+        this.drawHitParticles(ctx);
+        this.drawAbilityCooldown(ctx, drawX + this.width/2, drawY);
     }
    drawCharacterWithImage(ctx, drawX, drawY) {
     // Определяем какую картинку использовать
@@ -1550,7 +1587,348 @@ if (this.isAttacking || this.attackFrame > 0) {
         this.hitEffect = 10;
         this.velocityX += this.facingRight ? -3 : 3;
     }
+    
+    // ✨ НОВЫЕ МЕТОДЫ ДЛЯ СПОСОБНОСТИ MAGNITUDE WAVE ✨
+    
+    useMagnitudeWave() {
+    if (this.abilityCooldown > 0 || this.name !== "Lyron") {
+        console.log(`❌ Способность недоступна! Кулдаун: ${Math.ceil(this.abilityCooldown / 60)} сек`);
+        return false;
+    }
+    
+    // Проверяем что игра активна
+    if (!gameRunning || !gameStarted) {
+        console.log('❌ Игра не активна!');
+        return false;
+    }
+    
+    console.log(`🌊 ${this.name} использует MAGNITUDE WAVE!`);
+    
+    this.abilityActive = true;
+    this.abilityDuration = 180;
+    this.abilityCooldown = 400;
+    
+    // Инициализируем массив волн если его нет
+    if (!this.magnitudeWaves) {
+        this.magnitudeWaves = [];
+    }
+    
+    // Создаем первую волну немедленно
+    this.createMagnitudeWave(0);
+    
+    // Создаем остальные волны с проверкой состояния игры
+    const wave2Timer = setTimeout(() => {
+        if (gameRunning && gameStarted && this.abilityActive) {
+            this.createMagnitudeWave(1);
+        }
+    }, 300);
+    
+    const wave3Timer = setTimeout(() => {
+        if (gameRunning && gameStarted && this.abilityActive) {
+            this.createMagnitudeWave(2);
+        }
+    }, 600);
+    
+    // Сохраняем таймеры для возможной очистки
+    this.waveTimers = [wave2Timer, wave3Timer];
+    
+    // Временные бонусы
+    const originalSpeed = this.moveSpeed;
+    const originalJump = this.jumpPower;
+    
+    this.moveSpeed *= 1.3;
+    this.jumpPower *= 1.2;
+    
+    // Завершение способности с проверками
+    const endTimer = setTimeout(() => {
+        if (this) {
+            this.abilityActive = false;
+            this.moveSpeed = originalSpeed;
+            this.jumpPower = originalJump;
+            
+            // Очищаем таймеры
+            if (this.waveTimers) {
+                this.waveTimers.forEach(timer => clearTimeout(timer));
+                this.waveTimers = null;
+            }
+            
+            console.log(`⚡ Magnitude Wave завершена!`);
+        }
+    }, 3000);
+    
+    // Сохраняем основной таймер
+    this.abilityEndTimer = endTimer;
+    
+    return true;
 }
+    
+    createMagnitudeWave(waveIndex) {
+        const wave = {
+            x: this.x + this.width / 2,
+            y: this.y + this.height / 2,
+            radius: 20,
+            maxRadius: 300 + (waveIndex * 50),
+            speed: 8 + (waveIndex * 2),
+            damage: 20 + (waveIndex * 5),
+            color: `hsl(${200 + waveIndex * 30}, 100%, ${50 + waveIndex * 10}%)`,
+            alpha: 1,
+            hasHit: false,
+            waveIndex: waveIndex
+        };
+        
+        this.magnitudeWaves.push(wave);
+    }
+    
+     updateMagnitudeWaves() {
+        if (this.name !== "Lyron" || !this.magnitudeWaves) return;
+        
+        try {
+            for (let i = this.magnitudeWaves.length - 1; i >= 0; i--) {
+                const wave = this.magnitudeWaves[i];
+                
+                if (!wave) {
+                    this.magnitudeWaves.splice(i, 1);
+                    continue;
+                }
+                
+                wave.radius += wave.speed;
+                wave.alpha = 1 - (wave.radius / wave.maxRadius);
+                
+                // Проверяем столкновения только для игрока против бота
+                if (this === player && bot && !wave.hasHit && wave.radius > 50) {
+                    try {
+                        const distance = Math.sqrt(
+                            Math.pow(wave.x - (bot.x + bot.width/2), 2) + 
+                            Math.pow(wave.y - (bot.y + bot.height/2), 2)
+                        );
+                        
+                        if (distance <= wave.radius && distance >= wave.radius - wave.speed) {
+                            wave.hasHit = true;
+                            
+                            // Урон
+                            if (bot.takeDamage) {
+                                bot.takeDamage(wave.damage);
+                            }
+                            
+                            // Отталкивание
+                            if (typeof this.applyWaveKnockback === 'function') {
+                                this.applyWaveKnockback(wave, bot);
+                            } else {
+                                // Простое отталкивание без метода
+                                const simpleKnockback = wave.waveIndex * 8 + 10;
+                                bot.knockback += (bot.x < wave.x) ? -simpleKnockback : simpleKnockback;
+                                bot.screenShake = Math.max(bot.screenShake, 8);
+                            }
+                            
+                            console.log(`🌊 Magnitude Wave ${wave.waveIndex + 1} попала! Урон: ${wave.damage}`);
+                            
+                            // Создаем эффект попадания
+                            if (typeof this.createHitEffect === 'function') {
+                                this.createHitEffect(bot.x + bot.width/2, bot.y + bot.height/2, wave.color);
+                            }
+                        }
+                    } catch (collisionError) {
+                        console.error('❌ Ошибка при обработке столкновения волны:', collisionError);
+                        wave.hasHit = true;
+                    }
+                }
+                
+                // Удаляем волну если она достигла максимального радиуса
+                if (wave.radius >= wave.maxRadius) {
+                    this.magnitudeWaves.splice(i, 1);
+                }
+            }
+        } catch (error) {
+            console.error('❌ Критическая ошибка в updateMagnitudeWaves:', error);
+            this.magnitudeWaves = [];
+        }
+    }
+    
+    createHitEffect(x, y, color) {
+        for (let i = 0; i < 8; i++) {
+            const angle = (i / 8) * Math.PI * 2;
+            const particle = {
+                x: x,
+                y: y,
+                velocityX: Math.cos(angle) * (5 + Math.random() * 5),
+                velocityY: Math.sin(angle) * (5 + Math.random() * 5),
+                life: 30,
+                maxLife: 30,
+                color: color,
+                size: 3 + Math.random() * 3
+            };
+            
+            this.hitParticles.push(particle);
+            
+        }
+        
+    }
+     applyWaveKnockback(wave, target) {
+    // Рассчитываем направление отталкивания
+    const deltaX = (target.x + target.width/2) - wave.x;
+    const deltaY = (target.y + target.height/2) - wave.y;
+    const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+    
+    if (distance === 0) return; // Избегаем деления на ноль
+    
+    // Нормализуем направление
+    const normalizedX = deltaX / distance;
+    const normalizedY = deltaY / distance;
+    
+    // 🚀 МОЩНОЕ ОТТАЛКИВАНИЕ - увеличиваем силу в 3 раза!
+    const knockbackForce = (12 + (wave.waveIndex * 4)) * 3;
+    
+    // 🚀 СУПЕР СИЛЬНОЕ ПРИМЕНЕНИЕ ОТТАЛКИВАНИЯ:
+    target.velocityX += normalizedX * knockbackForce * target.knockbackResistance *3;
+    target.velocityY += Math.min(normalizedY * knockbackForce * 0.8, -12); // Сильный подброс вверх
+    
+    // Устанавливаем состояние отталкивания
+    target.isKnockedBack = true;
+    target.knockback += normalizedX * knockbackForce * 0.6; // Двойной knockback
+    
+    // 🚀 МОЩНЫЕ ЭФФЕКТЫ ЭКРАНА:
+    target.screenShake = Math.max(target.screenShake, (6 + wave.waveIndex * 2) * 2);
+    
+    console.log(`🌊💥 Волна ${wave.waveIndex + 1} РАЗНОСИТ ${target.name}! Сила: ${knockbackForce.toFixed(1)}`);
+}
+    
+    updateHitParticles() {
+        for (let i = this.hitParticles.length - 1; i >= 0; i--) {
+            const particle = this.hitParticles[i];
+            
+            particle.x += particle.velocityX;
+            particle.y += particle.velocityY;
+            particle.velocityY += 0.3;
+            particle.life--;
+            
+            if (particle.life <= 0) {
+                this.hitParticles.splice(i, 1);
+            }
+        }
+    }
+    
+    drawMagnitudeWaves(ctx, drawX, drawY) {
+        if (this.name !== "Lyron" || this.magnitudeWaves.length === 0) return;
+        
+        this.magnitudeWaves.forEach(wave => {
+            // 🌊 КРАСИВЫЕ МНОЖЕСТВЕННЫЕ КОЛЬЦА ВОЛНЫ
+            for (let ring = 0; ring < 3; ring++) {
+                let ringRadius = wave.radius - (ring * 15);
+                if (ringRadius <= 0) continue;
+                
+                let ringAlpha = wave.alpha * (1 - ring * 0.3);
+                let ringWidth = 6 - ring * 2;
+                
+                // Основное кольцо волны
+                ctx.strokeStyle = `hsla(${200 + wave.waveIndex * 30}, 100%, ${70 - ring * 10}%, ${ringAlpha})`;
+                ctx.lineWidth = ringWidth;
+                ctx.setLineDash([]);
+                
+                ctx.beginPath();
+                ctx.arc(wave.x, wave.y, ringRadius, 0, 2 * Math.PI);
+                ctx.stroke();
+            }
+            
+            // ✨ ВНУТРЕННЕЕ СВЕЧЕНИЕ ВОЛНЫ
+            ctx.strokeStyle = `rgba(255, 255, 255, ${wave.alpha * 0.9})`;
+            ctx.lineWidth = 2;
+            
+            ctx.beginPath();
+            ctx.arc(wave.x, wave.y, wave.radius * 0.8, 0, 2 * Math.PI);
+            ctx.stroke();
+            
+            // 🌟 ЭНЕРГЕТИЧЕСКИЕ ИСКРЫ ПО КРАЮ ВОЛНЫ
+            const sparkCount = Math.floor(wave.radius / 15);
+            for (let i = 0; i < sparkCount; i++) {
+                const angle = (i / sparkCount) * Math.PI * 2 + Date.now() * 0.005;
+                const sparkRadius = wave.radius + Math.sin(Date.now() * 0.01 + i) * 5;
+                const sparkX = wave.x + Math.cos(angle) * sparkRadius;
+                const sparkY = wave.y + Math.sin(angle) * sparkRadius;
+                
+                // Большие яркие искры
+                const sparkSize = 2 + Math.sin(Date.now() * 0.02 + i) * 1;
+                ctx.fillStyle = `rgba(255, 255, 255, ${wave.alpha})`;
+                ctx.beginPath();
+                ctx.arc(sparkX, sparkY, sparkSize, 0, 2 * Math.PI);
+                ctx.fill();
+                
+                // Дополнительное свечение искр
+                ctx.shadowColor = `hsla(${200 + wave.waveIndex * 30}, 100%, 80%, ${wave.alpha})`;
+                ctx.shadowBlur = 8;
+                ctx.beginPath();
+                ctx.arc(sparkX, sparkY, sparkSize * 0.5, 0, 2 * Math.PI);
+                ctx.fill();
+                ctx.shadowBlur = 0;
+            }
+            
+            // 🔥 ЦЕНТРАЛЬНОЕ ЭНЕРГЕТИЧЕСКОЕ ЯДРО
+            if (wave.radius < 120) {
+                const centerAlpha = (120 - wave.radius) / 120 * wave.alpha;
+                const pulseFactor = 1 + Math.sin(Date.now() * 0.01) * 0.3;
+                
+                // Создаем красивый радиальный градиент
+                const gradient = ctx.createRadialGradient(
+                    wave.x, wave.y, 0, 
+                    wave.x, wave.y, 40 * pulseFactor
+                );
+                
+                gradient.addColorStop(0, `rgba(255, 255, 255, ${centerAlpha})`);
+                gradient.addColorStop(0.3, `hsla(${200 + wave.waveIndex * 30}, 100%, 80%, ${centerAlpha * 0.8})`);
+                gradient.addColorStop(0.7, `hsla(${200 + wave.waveIndex * 30}, 100%, 60%, ${centerAlpha * 0.4})`);
+                gradient.addColorStop(1, `hsla(${200 + wave.waveIndex * 30}, 100%, 40%, 0)`);
+                
+                ctx.fillStyle = gradient;
+                ctx.beginPath();
+                ctx.arc(wave.x, wave.y, 40 * pulseFactor, 0, 2 * Math.PI);
+                ctx.fill();
+                
+                // Дополнительное внутреннее свечение
+                ctx.fillStyle = `rgba(255, 255, 255, ${centerAlpha * 0.5})`;
+                ctx.beginPath();
+                ctx.arc(wave.x, wave.y, 15 * pulseFactor, 0, 2 * Math.PI);
+                ctx.fill();
+            }
+            
+            // ⚡ ЭЛЕКТРИЧЕСКИЕ РАЗРЯДЫ ВОКРУГ ВОЛНЫ
+            if (wave.radius > 80 && wave.radius < 250) {
+                for (let i = 0; i < 6; i++) {
+                    const lightningAngle = (i / 6) * Math.PI * 2 + Date.now() * 0.01;
+                    const lightningLength = 20 + Math.random() * 15;
+                    
+                    const startX = wave.x + Math.cos(lightningAngle) * wave.radius;
+                    const startY = wave.y + Math.sin(lightningAngle) * wave.radius;
+                    const endX = startX + Math.cos(lightningAngle + Math.random() - 0.5) * lightningLength;
+                    const endY = startY + Math.sin(lightningAngle + Math.random() - 0.5) * lightningLength;
+                    
+                    ctx.strokeStyle = `rgba(255, 255, 255, ${wave.alpha * 0.8})`;
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.moveTo(startX, startY);
+                    ctx.lineTo(endX, endY);
+                    ctx.stroke();
+                }
+            }
+        });
+    }
+
+    
+    drawHitParticles(ctx) {
+        this.hitParticles.forEach(particle => {
+            const alpha = particle.life / particle.maxLife;
+            ctx.fillStyle = `${particle.color}${Math.floor(alpha * 255).toString(16).padStart(2, '0')}`;
+            
+            ctx.beginPath();
+            ctx.arc(particle.x, particle.y, particle.size * alpha, 0, 2 * Math.PI);
+            ctx.fill();
+        });
+    }
+    
+      drawAbilityCooldown(ctx, x, y) {
+    // Индикатор кулдауна отключен
+    return;
+}
+    }
+    
 
 // ====== ОПРЕДЕЛЕНИЯ ПЕРСОНАЖЕЙ ======
 
@@ -2102,6 +2480,21 @@ document.addEventListener('keydown', function(e) {
             player.block();
             showKeyPress('S');
             break;
+            case 81: // Q - Уникальная способность Lyron
+            if (player && player.name === "Lyron") {
+                const abilityUsed = player.useMagnitudeWave();
+                if (abilityUsed) {
+                    showKeyPress('Q - MAGNITUDE WAVE! 🌊');
+                    console.log('🌊 Lyron активировал Magnitude Wave!');
+                } else {
+                    showKeyPress('Q - НА КУЛДАУНЕ');
+                    console.log('❌ Magnitude Wave на кулдауне');
+                }
+            } else {
+                showKeyPress('Q - ТОЛЬКО ДЛЯ LYRON');
+                console.log('❌ Способность доступна только для Lyron');
+            }
+            break;
     }
     
     e.preventDefault();
@@ -2399,7 +2792,7 @@ function gameLoop() {
     
     if (bot.health <= 0) {
         gameRunning = false;
-        showGameEnd('ИГРОК WINS!', 'victory');
+        showGameEnd(`${player.name} WINS!`, 'victory');
         return;
     }
     
@@ -2407,8 +2800,14 @@ function gameLoop() {
 }
 
 function showGameEnd(message, type) {
+    // 🧹 ДОБАВЬТЕ ЭТИ ДВЕ СТРОКИ В НАЧАЛО:
+    gameRunning = false;
+    cleanupGameTimers();
+    
     ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    // ... остальной код остается без изменений
     
     let color, shadowColor, emoji;
     if (type === 'victory') {
@@ -2487,6 +2886,10 @@ function showGameEnd(message, type) {
 
 function restartGame() {
     console.log('🔄 === НОВЫЙ БОЙ НАЧИНАЕТСЯ === 🔄');
+    
+    // 🧹 ДОБАВЬТЕ ЭТУ СТРОКУ:
+    cleanupGameTimers();
+    
     console.log('⚔️ Воины готовятся к схватке...');
     if (gameStarted) {
         const currentDifficulty = getCurrentDifficulty();
@@ -2566,6 +2969,37 @@ function testMove(direction) {
 }
 
 
+
+document.body.setAttribute('tabindex', '0');
+function cleanupGameTimers() {
+    // Очищаем таймеры игрока
+    if (player) {
+        if (player.waveTimers) {
+            player.waveTimers.forEach(timer => clearTimeout(timer));
+            player.waveTimers = null;
+        }
+        if (player.abilityEndTimer) {
+            clearTimeout(player.abilityEndTimer);
+            player.abilityEndTimer = null;
+        }
+        player.magnitudeWaves = [];
+        player.hitParticles = [];
+    }
+    
+    // Очищаем таймеры бота
+    if (bot) {
+        if (bot.waveTimers) {
+            bot.waveTimers.forEach(timer => clearTimeout(timer));
+            bot.waveTimers = null;
+        }
+        if (bot.abilityEndTimer) {
+            clearTimeout(bot.abilityEndTimer);
+            bot.abilityEndTimer = null;
+        }
+        bot.magnitudeWaves = [];
+        bot.hitParticles = [];
+    }
+}
 
 document.body.setAttribute('tabindex', '0');
 document.body.focus();
