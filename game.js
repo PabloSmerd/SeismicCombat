@@ -162,7 +162,7 @@ const CHARACTERS = [
       idle: "assets/ZAIN.png",
       attack: "assets/ZAINATA.png",
       portrait: "assets/ZAIN.png",
-      shield: "/assets/!ZAINblock.png"
+      shield: "assets/!ZAINblock.png"
     }
   },
   {
