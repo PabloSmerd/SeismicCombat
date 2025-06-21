@@ -4,39 +4,292 @@
 // ==== КОНФИГ КАРТИНОК ДЛЯ ПЕРСОНАЖЕЙ ====
 // Функция изменения размера canvas
 function resizeCanvas() {
-    const canvas = document.getElementById('gameCanvas');
-    if (canvas) {
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
-        
-        // Обновляем позиции персонажей пропорционально
-        if (player) {
-            player.y = canvas.height - player.height - 20;
-        }
-        if (bot) {
-            bot.y = canvas.height - bot.height - 20;
-            bot.x = canvas.width - 150; // Бот справа
+    // Простая инициализация canvas
+    if (!canvas) {
+        canvas = document.getElementById('gameCanvas');
+        if (!canvas) {
+            console.error('❌ Canvas не найден!');
+            return false;
         }
     }
+    
+    if (!ctx) {
+        ctx = canvas.getContext('2d');
+        if (!ctx) {
+            console.error('❌ Не удалось получить контекст!');
+            return false;
+        }
+    }
+    
+    // Устанавливаем размер
+    canvas.width = 1200;
+    canvas.height = 650;
+    
+    console.log('✅ Canvas инициализирован');
+    return true;
 }
 
 // Вызывать при загрузке и изменении размера
-window.addEventListener('load', resizeCanvas);
+// Оставляем только ОДИН обработчик
+// Один правильный обработчик загрузки
+// ====== ИСПРАВЛЕННАЯ ИНИЦИАЛИЗАЦИЯ ======
+// Один правильный обработчик загрузки
+// ====== ПОЛНАЯ ЗАМЕНА БЛОКА ИНИЦИАЛИЗАЦИИ ======
+// Удалите ВЕСЬ старый блок window.addEventListener('load', ...) и замените на этот:
+
+window.addEventListener('load', () => {
+    console.log('🚀 Инициализация игры...');
+    
+    // ... другой код ...
+    
+    // Настраиваем кнопки
+    const prevBtn = document.getElementById('prevCharBtn');
+    const nextBtn = document.getElementById('nextCharBtn');
+    const confirmBtn = document.getElementById('confirmCharBtn');
+    
+    if (prevBtn) {
+        prevBtn.addEventListener('click', () => {
+            selectedCharIndex = (selectedCharIndex - 1 + CHARACTERS.length) % CHARACTERS.length;
+            updateCharacterDisplay();
+            // ❌ ЗДЕСЬ НЕТ preloadImages() - ВОТ ПРОБЛЕМА!
+        });
+    }
+    
+    if (nextBtn) {
+        nextBtn.addEventListener('click', () => {
+            selectedCharIndex = (selectedCharIndex + 1) % CHARACTERS.length;
+            updateCharacterDisplay();
+            // ❌ ЗДЕСЬ ТОЖЕ НЕТ preloadImages() - ВОТ ПРОБЛЕМА!
+        });
+    }
+    
+    // ... остальной код ...
+});
+
+// ========================================
+// ✅ ЗАМЕНИТЕ НА ЭТОТ ИСПРАВЛЕННЫЙ КОД:
+// ========================================
+
+window.addEventListener('load', () => {
+    console.log('🚀 Инициализация игры...');
+    
+    // Инициализируем canvas
+    if (!resizeCanvas()) {
+        alert('Ошибка загрузки игры!');
+        return;
+    }
+    
+    // Настраиваем события мыши
+    setupMouseEvents();
+    
+    // Настраиваем кнопки
+    const prevBtn = document.getElementById('prevCharBtn');
+    const nextBtn = document.getElementById('nextCharBtn');
+    const confirmBtn = document.getElementById('confirmCharBtn');
+    
+    if (prevBtn) {
+        prevBtn.addEventListener('click', () => {
+            console.log('🔄 Кнопка НАЗАД нажата');
+            
+            // Меняем индекс персонажа
+            selectedCharIndex = (selectedCharIndex - 1 + CHARACTERS.length) % CHARACTERS.length;
+            console.log(`👈 Переключение на персонажа ${selectedCharIndex}: ${CHARACTERS[selectedCharIndex].name}`);
+            
+            // Обновляем отображение
+            updateCharacterDisplay();
+            
+            // ✨ КРИТИЧЕСКИ ВАЖНО: Загружаем картинки нового персонажа
+            preloadImages();
+            console.log(`🎨 Загружаем картинки для ${CHARACTERS[selectedCharIndex].name}`);
+        });
+    }
+    
+    if (nextBtn) {
+        nextBtn.addEventListener('click', () => {
+            console.log('🔄 Кнопка ВПЕРЕД нажата');
+            
+            // Меняем индекс персонажа
+            selectedCharIndex = (selectedCharIndex + 1) % CHARACTERS.length;
+            console.log(`👉 Переключение на персонажа ${selectedCharIndex}: ${CHARACTERS[selectedCharIndex].name}`);
+            
+            // Обновляем отображение
+            updateCharacterDisplay();
+            
+            // ✨ КРИТИЧЕСКИ ВАЖНО: Загружаем картинки нового персонажа
+            preloadImages();
+            console.log(`🎨 Загружаем картинки для ${CHARACTERS[selectedCharIndex].name}`);
+        });
+    }
+    
+    if (confirmBtn) {
+        confirmBtn.addEventListener('click', () => {
+            console.log('✅ Персонаж подтвержден, переход к выбору сложности');
+            
+            // Убеждаемся что картинки загружены перед переходом
+            if (!imagesLoaded) {
+                console.log('⏳ Картинки еще загружаются, подождите...');
+                preloadImages();
+                
+                // Ждем загрузки перед переходом
+                setTimeout(() => {
+                    if (imagesLoaded) {
+                        document.getElementById('characterMenu').style.display = 'none';
+                        document.getElementById('difficultyMenu').style.display = 'block';
+                    } else {
+                        console.warn('⚠️ Картинки не загрузились, но переходим дальше');
+                        document.getElementById('characterMenu').style.display = 'none';
+                        document.getElementById('difficultyMenu').style.display = 'block';
+                    }
+                }, 1000);
+            } else {
+                document.getElementById('characterMenu').style.display = 'none';
+                document.getElementById('difficultyMenu').style.display = 'block';
+            }
+        });
+    }
+    
+    // ✨ ВАЖНО: Загружаем картинки первого персонажа сразу
+    console.log(`🎭 Загружаем картинки стартового персонажа: ${CHARACTERS[selectedCharIndex].name}`);
+    preloadImages();
+    
+    // Показываем первого персонажа
+    updateCharacterDisplay();
+    loadBackground();
+    
+    console.log('✅ Игра готова!');
+});
+
+// ============ НОВАЯ ФУНКЦИЯ ДЛЯ НАСТРОЙКИ СОБЫТИЙ МЫШИ ============
+function setupMouseEvents() {
+    if (!canvas || !ctx) {
+        console.error('❌ Canvas не готов для установки обработчиков событий!');
+        return false;
+    }
+    
+    console.log('🖱️ Настройка обработчиков мыши для canvas...');
+    
+    // УПРАВЛЕНИЕ МЫШЬЮ
+    canvas.addEventListener('mousedown', function(e) {
+        console.log('🖱️ Клик мыши обнаружен!', e.button);
+        
+        if (!gameRunning || !gameStarted || !player || !bot) {
+            showKeyPress('Игра не активна');
+            console.log('❌ Игра не активна, клик игнорируется');
+            return;
+        }
+        
+        e.preventDefault();
+        e.stopPropagation();
+        
+        if (e.button === 0) { // Левая кнопка мыши
+            console.log('⚡ Попытка легкой атаки...');
+            let hitResult;
+            
+            if (player.canCounter > 0) {
+                console.log('💥 Выполняется контратака!');
+                hitResult = player.counterAttack(bot);
+                if (hitResult === 'hit') {
+                    showKeyPress('ЛКМ - КОНТРАТАКА ПОПАЛА! 35 УРОНА!');
+                    console.log(`💥 КОНТРАТАКА! Критический урон: 35, Здоровье бота: ${bot.health}`);
+                    
+                    canvas.classList.add('counter-attack-effect');
+                    setTimeout(() => {
+                        canvas.classList.remove('counter-attack-effect');
+                    }, 500);
+                }
+            } else {
+                hitResult = player.lightAttack(bot);
+                if (hitResult === 'hit') {
+                    showKeyPress('ЛКМ - БЫСТРЫЙ УДАР ПОПАЛ!');
+                    console.log(`⚡ Быстрый удар попал! Урон: 15, Здоровье бота: ${bot.health}`);
+                } else if (hitResult === 'parried') {
+                    showKeyPress('ЛКМ - ПАРИРОВАН!');
+                    console.log(`🛡️ Удар парирован! Бот может контратаковать!`);
+                } else if (hitResult === 'blocked') {
+                    showKeyPress('ЛКМ - ЗАБЛОКИРОВАН');
+                    console.log(`🛡️ Удар заблокирован! Урон: 5`);
+                } else {
+                    showKeyPress('ЛКМ - МИМО');
+                    console.log(`❌ Быстрый удар не попал, дистанция слишком большая`);
+                }
+                
+                if (hitResult === 'hit' || hitResult === 'blocked') {
+                    canvas.classList.add('light-attack-effect');
+                    setTimeout(() => {
+                        canvas.classList.remove('light-attack-effect');
+                    }, 150);
+                } else if (hitResult === 'parried') {
+                    canvas.classList.add('parry-effect');
+                    setTimeout(() => {
+                        canvas.classList.remove('parry-effect');
+                    }, 300);
+                }
+            }
+            
+        } else if (e.button === 2) { // Правая кнопка мыши
+            console.log('💥 Попытка тяжелой атаки...');
+            const hitResult = player.heavyAttack(bot);
+            
+            if (hitResult === 'hit') {
+                showKeyPress('ПКМ - ТЯЖЕЛЫЙ УДАР ПОПАЛ!');
+                console.log(`💥 Тяжелый удар попал! Урон: 25, Здоровье бота: ${bot.health}`);
+            } else if (hitResult === 'parried') {
+                showKeyPress('ПКМ - ПАРИРОВАН!');
+                console.log(`🛡️ Тяжелый удар парирован! Бот может контратаковать!`);
+            } else if (hitResult === 'blocked') {
+                showKeyPress('ПКМ - ЗАБЛОКИРОВАН');
+                console.log(`🛡️ Тяжелый удар заблокирован! Урон: 8`);
+            } else {
+                showKeyPress('ПКМ - МИМО');
+                console.log(`❌ Тяжелый удар не попал, дистанция слишком большая`);
+            }
+            
+            if (hitResult === 'hit' || hitResult === 'blocked') {
+                canvas.classList.add('heavy-attack-effect');
+                setTimeout(() => {
+                    canvas.classList.remove('heavy-attack-effect');
+                }, 400);
+            } else if (hitResult === 'parried') {
+                canvas.classList.add('parry-effect');
+                setTimeout(() => {
+                    canvas.classList.remove('parry-effect');
+                }, 300);
+            }
+        }
+        
+        return false;
+    });
+
+    // Отключаем контекстное меню
+    canvas.addEventListener('contextmenu', function(e) {
+        e.preventDefault();
+        return false;
+    });
+
+    // Курсор
+    canvas.addEventListener('mouseenter', function() {
+        canvas.style.cursor = 'crosshair';
+    });
+
+    canvas.addEventListener('mouseleave', function() {
+        canvas.style.cursor = 'default';
+    });
+    
+    console.log('✅ Обработчики мыши успешно установлены!');
+    return true;
+}
+
+// ============ ДОПОЛНИТЕЛЬНЫЕ ОБРАБОТЧИКИ ============
+document.addEventListener('contextmenu', function(e) {
+    e.preventDefault();
+    return false;
+});
+
+// Убираем старые обработчики событий мыши - они будут добавлены в setupMouseEvents()
+// canvas.addEventListener - ЭТИ СТРОКИ НУЖНО УДАЛИТЬ ИЗ СТАРОГО КОДА!
 window.addEventListener('resize', resizeCanvas);
 const CHARACTERS = [
-  {
-    key: "Tom.J",
-    name: "Tom.j", 
-    color: "#FFD700",
-     description: "The Great Warrior with AI Demons",
-    images: {
-      idle: "assets/TOM.png",
-      attack: "assets/TOMFIGHT.png",
-      portrait: "assets/TOM.png"  ,
-      shield: "assets/Tom.jBkock.png"  // ← ДОБАВИТЬ ЭТО
-    }
-  },
-  {
+    {
     key: "lyron",
     name: "Lyron",
     color: "#00BFFF", 
@@ -48,6 +301,26 @@ const CHARACTERS = [
       shield: "assets/lyronBlock.png"  // ← ДОБАВИТЬ ЭТО
     }
   },
+{
+    key: "Tom.J",
+    name: "Tom.J", 
+    color: "#FFD700",
+    description: "The Great Warrior with AI Demons",
+    images: {
+      idle: "assets/TOM.png",
+      attack: "assets/TOMFIGHT.png",
+      portrait: "assets/TOM.png",
+      shield: "assets/Tom.jBkock.png"
+    },
+    // ✨ ДОБАВИТЬ ЭТИ СТРОКИ:
+    specialAbility: "greenSlimeShot",
+    abilityCooldown: 250,
+    slimeSpeed: 18,
+    slimeDamage: 30,
+    slimeGravity: 0.1,
+    maxSlimeBounces: 1,
+    slimeSize: 25
+},
   {
     key: "noxx",
     name: "Noxx",
@@ -59,8 +332,14 @@ const CHARACTERS = [
       attack: "assets/NOXX_FIGHTER.png",
       portrait: "assets/NOXX.png",
       shield: "assets/Noxx_block.png"
-    }
-  },
+    },
+    // ✨ НОВЫЕ СВОЙСТВА ДЛЯ ТЕЛЕПОРТАЦИИ:
+    specialAbility: "electricTeleport",
+    abilityCooldown: 80,        // 6 секунд кулдаун
+    teleportDamage: 40,          // Урон от телепорт-атаки
+    teleportStunDuration: 45,    // Оглушение на 45 кадров
+    teleportRange: 400           // Максимальная дистанция телепортации
+},
    {
     key: "Burhan.IP",
     name: "Burhan",
@@ -101,18 +380,27 @@ const CHARACTERS = [
     }
   },
   {
-    key: "vludblet",
-    name: "vludblet",
-    color: "#ffa502",
-    description: "Just a nice guy",
-    element: "electric",
-    images: {
-      idle: "assets/vludblet.png",
-      attack: "assets/vludbletattack.png",
-      portrait: "assets/vludblet.png",
-      shield: "assets/vludbock.png"
-    }
+  key: "vludblet",
+  name: "vludblet",
+  color: "#ffa502",
+  description: "Just a nice guy who throws bottles at enemies",
+  element: "bottles",  // изменено с "electric"
+  images: {
+    idle: "assets/vludblet.png",
+    attack: "assets/vludbletattack.png",
+    portrait: "assets/vludblet.png",
+    shield: "assets/vludbock.png"
   },
+  // НОВЫЕ СВОЙСТВА:
+  specialAbility: "bottleThrow",
+  abilityCooldown: 300,
+  bottleSpeed: 15,        // 🚀 Быстрее
+  bottleDamage: 35,       // 🚀 Больше урона
+  bottleGravity: 0,       // 🚀 БЕЗ гравитации
+  maxBottleBounces: 0,    // 🚀 БЕЗ отскоков
+  straightFlight: true    // 🚀 Прямой полет
+
+},
    {
     key: "Aashi",
     name: "Aashi",
@@ -217,6 +505,33 @@ const CHARACTERS = [
       shield: "assets/Zellablock.png"
     }
   },
+  {
+    key: "Busulis",
+    name: "Busulis",
+    color: "#ffa502",
+    description: "ZELLA",
+    element: "electric",
+    images: {
+      idle: "assets/Busulis.png",
+      attack: "assets/Busulisatack.png",
+      portrait: "assets/Busulis.png",
+      shield: "assets/bulliosblock.png"
+    }
+  },
+   {
+    key: "effgennn.l33t",
+    name: "effgennn.l33t",
+    color: "#ffa502",
+    description: "ZELLA",
+    element: "electric",
+    images: {
+      idle: "assets/effgennn.l33t.png",
+      attack: "assets/effgennn.l33attack.png",
+      portrait: "assets/effgennn.l33t.png",
+      shield: "assets/effgennn.l33tblock.png"
+    }
+  }
+  
 ];
 // ====== ФОНОВОЕ ИЗОБРАЖЕНИЕ ======
 // ====== ФОНОВЫЕ ИЗОБРАЖЕНИЯ ======
@@ -289,44 +604,6 @@ function updateCharacterDisplay() {
 }
 
 
-window.addEventListener('load', () => {
-    const prevBtn = document.getElementById('prevCharBtn');
-    const nextBtn = document.getElementById('nextCharBtn'); 
-    const confirmBtn = document.getElementById('confirmCharBtn');
-    const charMenu = document.getElementById('characterMenu');
-    const diffMenu = document.getElementById('difficultyMenu');
-
-    // Инициализируем отображение первого персонажа
-    updateCharacterDisplay();
-    
-    // 🎨 ВОТ ЭТА СТРОЧКА - ДОБАВЬТЕ ЕЁ СЮДА:
-    loadBackground();
-
-    if (prevBtn) {
-        prevBtn.addEventListener('click', () => {
-            selectedCharIndex = (selectedCharIndex - 1 + CHARACTERS.length) % CHARACTERS.length;
-            updateCharacterDisplay();
-        });
-    }
-
-    if (nextBtn) {
-        nextBtn.addEventListener('click', () => {
-            selectedCharIndex = (selectedCharIndex + 1) % CHARACTERS.length;
-            updateCharacterDisplay();
-        });
-    }
-
-    if (confirmBtn) {
-        confirmBtn.addEventListener('click', () => {
-            console.log(`Выбран персонаж: ${CHARACTERS[selectedCharIndex].name}`);
-            preloadImages(); // Загружаем картинки выбранного персонажа
-            charMenu.style.display = 'none';
-            diffMenu.style.display = 'block';
-        });
-    }
-});
-
-
 // Предзагрузка картинок
 
 
@@ -388,35 +665,7 @@ function preloadBotImages(botCharacterIndex) {
         console.log(`🎨 Все картинки бота загружены для ${botCharacter.name}!`);
     });
 }
-// Предзагрузка картинок для ИИ
-function preloadBotImages(botCharacterIndex) {
-    const botCharacter = CHARACTERS[botCharacterIndex];
-    const urls = botCharacter.images;
-    
-    // Создаем отдельный кэш для бота
-    window.botImageCache = {};
-    
-    const promises = Object.entries(urls).map(([state, url]) =>
-        new Promise(resolve => {
-            const img = new Image();
-            img.onload = () => { 
-                window.botImageCache[state] = img; 
-                console.log(`🤖 Загружена картинка бота: ${state} для ${botCharacter.name}`);
-                resolve(); 
-            };
-            img.onerror = () => { 
-                console.error(`❌ Ошибка загрузки картинки бота: ${url} для ${botCharacter.name}`); 
-                resolve(); 
-            };
-            img.src = url;
-        })
-    );
-    
-    Promise.all(promises).then(() => {
-        window.botImagesLoaded = true;
-        console.log(`🎨 Все картинки бота загружены для ${botCharacter.name}!`);
-    });
-}
+
 
 // 🎨 =============== ВОТ ТУТ ДОБАВЬТЕ ЭТУ ФУНКЦИЮ ===============
 // ====== ФУНКЦИЯ РИСОВАНИЯ ФОНА ======
@@ -547,6 +796,48 @@ class Fighter {
         // 🚀 НОВЫЕ СВОЙСТВА ДЛЯ ОТТАЛКИВАНИЯ
         this.isKnockedBack = false;    // Находится ли в состоянии отталкивания
         this.knockbackResistance = 1.0; // Сопротивление отталкиванию (1.0 = норма)
+        // 🍾 НОВЫЕ СВОЙСТВА ДЛЯ СИСТЕМЫ БУТЫЛОК vludblet
+        this.bottles = [];              // Массив летящих бутылок
+        this.bottleThrowCooldown = 0;   // Кулдаун броска бутылки (в кадрах)
+        this.throwingBottle = false;    // Находится ли в анимации броска
+        this.throwFrame = 0;            // Текущий кадр анимации броска
+        // 🟢 НОВЫЕ СВОЙСТВА ДЛЯ СИСТЕМЫ ЗЕЛЕНОЙ ЖИЖИ TOM.J
+        this.slimes = [];                // Массив летящих слаймов
+        this.slimeThrowCooldown = 0;     // Кулдаун броска слайма
+        this.throwingSlime = false;      // Находится ли в анимации броска
+        this.slimeThrowFrame = 0;        // Текущий кадр анимации броска
+
+        // Эффекты от слаймов
+        this.slimeParticles = [];        // Массив частиц слизи
+        this.slimeExplosions = [];       // Массив взрывов от попадания слаймов
+
+        // Настройки слаймов (берутся из CHARACTERS или стандартные)
+        this.slimeSpeed = 18;            // Скорость полета слайма
+        this.slimeDamage = 30;           // Урон от попадания слайма
+        this.slimeGravity = 0.1;         // Гравитация для слайма
+        this.maxSlimeBounces = 1;        // Максимальное количество отскоков
+        this.slimeSize = 25;             // Размер слайма
+        // Эффекты от бутылок
+        this.glassParticles = [];       // Массив осколков стекла от разбитых бутылок
+        this.bottleExplosions = [];     // Массив взрывов от попадания бутылок
+        
+        // Настройки бутылок (берутся из CHARACTERS или стандартные)
+        this.bottleSpeed = 12;          // Скорость полета бутылки
+        this.bottleDamage = 30;         // Урон от попадания бутылки
+        this.bottleGravity = 0.5;       // Гравитация для бутылки
+        this.maxBottleBounces = 2;      // Максимальное количество отскоков
+
+        // ⚡ НОВЫЕ СВОЙСТВА ДЛЯ ТЕЛЕПОРТАЦИИ NOXX
+        this.isTeleporting = false;          // Находится ли в процессе телепортации
+        this.teleportCooldown = 0;           // Кулдаун телепортации (в кадрах)
+        this.teleportPhase = 'none';         // Фаза телепортации: 'none', 'disappear', 'appear', 'strike'
+        this.teleportTimer = 0;              // Таймер текущей фазы телепортации
+        this.teleportStartX = 0;             // Начальная позиция X
+        this.teleportStartY = 0;             // Начальная позиция Y
+        this.teleportTargetX = 0;            // Целевая позиция X
+        this.teleportTargetY = 0;            // Целевая позиция Y
+        this.electricParticles = [];         // Частицы электричества
+        this.teleportGlow = 0;               // Эффект свечения при телепортации
     }
     
     // СИСТЕМА АНИМАЦИИ АТАК
@@ -720,14 +1011,36 @@ class Fighter {
         this.updateAttackAnimation();
     }
     
-    // ✨ НОВЫЕ ОБНОВЛЕНИЯ ДЛЯ СПОСОБНОСТЕЙ ✨
+     // ✨ НОВЫЕ ОБНОВЛЕНИЯ ДЛЯ СПОСОБНОСТЕЙ ✨
+      // ✨ НОВЫЕ ОБНОВЛЕНИЯ ДЛЯ СПОСОБНОСТЕЙ ✨
     this.updateMagnitudeWaves();
     this.updateHitParticles();
+    this.updateBottles();
+    this.updateBottleExplosions();
+    this.updateGlassParticles();
+    // НОВЫЕ СТРОКИ ДЛЯ СЛАЙМОВ:
+    this.updateSlimes();
+    
+    this.updateSlimeParticles();
+
+// Обновляем кулдаун броска слайма
+if (this.slimeThrowCooldown > 0) this.slimeThrowCooldown--;
+    
+    // Обновляем кулдаун броска бутылки
+    if (this.bottleThrowCooldown > 0) this.bottleThrowCooldown--;
     
     // Обновляем кулдаун способности
-    if (this.abilityCooldown > 0) this.abilityCooldown--;
-    if (this.abilityDuration > 0) this.abilityDuration--;
-    }
+if (this.abilityCooldown > 0) this.abilityCooldown--;
+if (this.abilityDuration > 0) this.abilityDuration--;
+
+// ⚡ НОВЫЕ ОБНОВЛЕНИЯ ДЛЯ ТЕЛЕПОРТАЦИИ NOXX
+this.updateTeleportation();
+this.updateElectricParticles();
+
+// Обновляем кулдаун телепортации
+if (this.teleportCooldown > 0) this.teleportCooldown--;
+if (this.teleportGlow > 0) this.teleportGlow--;
+}
     
     draw(ctx) {
         let shakeX = 0, shakeY = 0;
@@ -807,10 +1120,14 @@ class Fighter {
         // Основные эффекты состояния
         this.drawStatusEffects(ctx, drawX, drawY);
         // Рисуем персонажа - картинкой или стандартным способом
-if (this.useImages && imagesLoaded) {
+// ⚡ ЭФФЕКТЫ ТЕЛЕПОРТАЦИИ ДЛЯ NOXX (ПЕРЕД рисованием персонажа)
+if (this.name === "Noxx") {
+    this.drawTeleportEffects(ctx, drawX, drawY);
+}
+
+// Рисуем персонажа только если он НЕ исчезает при телепортации
+if (!this.isTeleporting || this.teleportPhase !== 'disappear') {
     this.drawCharacterWithImage(ctx, drawX, drawY);
-} else {
-    this.drawCharacter(ctx, drawX, drawY);
 }
         
         // Рисуем персонажа с улучшенной детализацией
@@ -824,6 +1141,17 @@ if (this.useImages && imagesLoaded) {
          this.drawMagnitudeWaves(ctx, drawX, drawY);
         this.drawHitParticles(ctx);
         this.drawAbilityCooldown(ctx, drawX + this.width/2, drawY);
+        
+        // НОВЫЕ СТРОКИ ДЛЯ БУТЫЛОК:
+        this.drawBottles(ctx);
+        this.drawGlassParticles(ctx);
+        this.drawBottleExplosions(ctx);
+        this.drawBottleThrowCooldown(ctx, this.x + this.width/2, this.y);
+        this.drawSlimes(ctx);
+        this.drawSlimeParticles(ctx);
+        this.drawSlimeExplosions(ctx);
+        this.drawSlimeThrowCooldown(ctx, this.x + this.width/2, this.y);
+        this.drawElectricParticles(ctx);
     }
    drawCharacterWithImage(ctx, drawX, drawY) {
     // Определяем какую картинку использовать
@@ -1661,7 +1989,528 @@ if (this.isAttacking || this.attackFrame > 0) {
     
     return true;
 }
+  // 🍾 МЕТОД БРОСКА БУТЫЛКИ ДЛЯ VLUDBLET
+    throwBottle() {
+    if (this.bottleThrowCooldown > 0 || this.name !== "vludblet") {
+        console.log(`❌ Бросок бутылки недоступен! Кулдаун: ${Math.ceil(this.bottleThrowCooldown / 60)} сек`);
+        return false;
+    }
     
+    
+    if (!gameRunning || !gameStarted) {
+        console.log('❌ Игра не активна!');
+        return false;
+    }
+    
+    console.log(`🍾 ${this.name} бросает бутылку прямо!`);
+    
+    
+    const bottle = {
+        x: this.x + (this.facingRight ? this.width : 0),
+        y: this.y + this.height / 2, // 🎯 На уровне центра
+        velocityX: (this.facingRight ? 1 : -1) * this.bottleSpeed,
+        velocityY: 0, // 🚀 БЕЗ вертикальной скорости
+        gravity: 0,  // 🚀 БЕЗ гравитации
+        damage: this.bottleDamage,
+        bounces: 0,
+        maxBounces: 0, // 🚀 БЕЗ отскоков
+        rotation: 0,
+        hasHit: false,
+        thrower: this,
+        straightFlight: true // 🎯 Флаг прямого полета
+    };
+    
+    if (!this.bottles) {
+        this.bottles = [];
+    }
+    
+    this.bottles.push(bottle);
+    this.bottleThrowCooldown = 300;
+    
+    return true;
+}
+    // 🟢 МЕТОД БРОСКА ЗЕЛЕНОЙ ЖИЖИ ДЛЯ TOM.J
+throwSlime() {
+    if (this.slimeThrowCooldown > 0 || this.name !== "Tom.J") {
+        console.log(`❌ Бросок слайма недоступен! Кулдаун: ${Math.ceil(this.slimeThrowCooldown / 60)} сек`);
+        return false;
+    }
+    
+    if (!gameRunning || !gameStarted) {
+        console.log('❌ Игра не активна!');
+        return false;
+    }
+    
+    
+    console.log(`🟢 ${this.name} стреляет зеленой жижой!`);
+    
+    
+    const slime = {
+        x: this.x + (this.facingRight ? this.width : 0),
+        y: this.y + this.height / 2 - 10,
+        velocityX: (this.facingRight ? 1 : -1) * this.slimeSpeed,
+        velocityY: -3, // Небольшая дуга вверх
+        gravity: this.slimeGravity,
+        damage: this.slimeDamage,
+        bounces: 0,
+        maxBounces: this.maxSlimeBounces,
+        rotation: 0,
+        hasHit: false,
+        thrower: this,
+        size: this.slimeSize,
+        trail: [] // Для эффекта следа
+    };
+    
+    if (!this.slimes) {
+        this.slimes = [];
+    }
+    
+    this.slimes.push(slime);
+    this.slimeThrowCooldown = 250;
+    
+    return true;
+}
+
+// ⚡ МЕТОД ТЕЛЕПОРТАЦИИ ДЛЯ NOXX
+electricTeleport() {
+    if (this.teleportCooldown > 0 || this.name !== "Noxx") {
+        console.log(`❌ Телепортация недоступна! Кулдаун: ${Math.ceil(this.teleportCooldown / 60)} сек`);
+        return false;
+    }
+    
+    if (!gameRunning || !gameStarted) {
+        console.log('❌ Игра не активна!');
+        return false;
+    }
+    
+    // Определяем цель (противника)
+    let target;
+    if (this === player && bot) {
+        target = bot;
+    } else if (this === bot && player) {
+        target = player;
+    } else {
+        console.log('❌ Цель для телепортации не найдена!');
+        return false;
+    }
+    
+    console.log(`⚡ ${this.name} начинает ELECTRIC TELEPORT STRIKE!`);
+    
+    // Запоминаем начальную позицию
+    this.teleportStartX = this.x;
+    this.teleportStartY = this.y;
+    
+    // Вычисляем позицию рядом с целью (справа или слева)
+    const targetSide = Math.random() < 0.5 ? -1 : 1; // -1 = слева, 1 = справа
+    this.teleportTargetX = target.x + (targetSide * 80); // На расстоянии 80 пикселей
+    this.teleportTargetY = target.y;
+    
+    // Проверяем, чтобы не телепортироваться за границы экрана
+    this.teleportTargetX = Math.max(0, Math.min(this.teleportTargetX, canvas.width - this.width));
+    this.teleportTargetY = Math.max(0, Math.min(this.teleportTargetY, canvas.height - this.height - 20));
+    
+    // Начинаем телепортацию
+    this.isTeleporting = true;
+    this.teleportPhase = 'disappear';
+    this.teleportTimer = 20; // 20 кадров на исчезновение
+    this.teleportCooldown = 360; // 6 секунд кулдаун
+    this.teleportGlow = 30;
+    
+    // Создаем начальные электрические эффекты
+    this.createElectricParticles(this.x + this.width/2, this.y + this.height/2, 15);
+    
+    return true;
+}
+// 🟢 МЕТОД ОБНОВЛЕНИЯ СЛАЙМОВ
+updateSlimes() {
+    if (this.name !== "Tom.J" || !this.slimes) return;
+    
+    try {
+        for (let i = this.slimes.length - 1; i >= 0; i--) {
+            const slime = this.slimes[i];
+            
+            if (!slime) {
+                this.slimes.splice(i, 1);
+                continue;
+            }
+            
+            // Добавляем точку в след
+            slime.trail.push({x: slime.x, y: slime.y, life: 20});
+            if (slime.trail.length > 10) slime.trail.shift();
+            
+            // Обновляем физику слайма
+            slime.velocityY += slime.gravity;
+            slime.x += slime.velocityX;
+            slime.y += slime.velocityY;
+            slime.rotation += 0.15;
+            
+            // Проверяем столкновение с землей
+            if (slime.y > canvas.height - 50) {
+                slime.y = canvas.height - 50;
+                
+                if (slime.bounces < slime.maxBounces) {
+                    slime.velocityY = -slime.velocityY * 0.7;
+                    slime.velocityX *= 0.9;
+                    slime.bounces++;
+                    this.createSlimeParticles(slime.x, slime.y, 3);
+                    console.log(`🟢 Слайм отскочил! Отскок ${slime.bounces}/${slime.maxBounces}`);
+                } else {
+                    // Слайм разбрызгивается
+                    this.createSlimeExplosion(slime.x, slime.y);
+                    this.slimes.splice(i, 1);
+                    console.log(`💚 Слайм разбрызгался!`);
+                    continue;
+                }
+            }
+            
+            // Проверяем столкновения с противником
+            if (this === player && bot && !slime.hasHit) {
+                this.checkSlimeCollision(slime, bot, i);
+            } else if (this === bot && player && !slime.hasHit) {
+                this.checkSlimeCollision(slime, player, i);
+            }
+            
+            // Удаляем слайм если он улетел за экран
+            if (slime.x < -100 || slime.x > canvas.width + 100) {
+                this.slimes.splice(i, 1);
+            }
+        }
+    } catch (error) {
+        console.error('❌ Ошибка в updateSlimes:', error);
+        this.slimes = [];
+    }
+}
+// 🟢 МЕТОДЫ РИСОВАНИЯ СЛАЙМОВ
+drawSlimes(ctx) {
+    if (this.name !== "Tom.J" || !this.slimes) return;
+    
+    this.slimes.forEach(slime => {
+        // Рисуем след слайма
+        if (slime.trail) {
+            slime.trail.forEach((point, index) => {
+                const alpha = point.life / 20 * (index / slime.trail.length);
+                ctx.fillStyle = `rgba(0, 255, 0, ${alpha * 0.3})`;
+                ctx.beginPath();
+                ctx.arc(point.x, point.y, 3, 0, 2 * Math.PI);
+                ctx.fill();
+                point.life--;
+            });
+            // Удаляем старые точки следа
+            slime.trail = slime.trail.filter(point => point.life > 0);
+        }
+        
+        // Основной слайм
+        ctx.save();
+        ctx.translate(slime.x + slime.size/2, slime.y + slime.size/2);
+        ctx.rotate(slime.rotation);
+        
+        // Тело слайма
+        ctx.fillStyle = '#00FF00';
+        ctx.beginPath();
+        ctx.arc(0, 0, slime.size/2, 0, 2 * Math.PI);
+        ctx.fill();
+        
+        // Блик на слайме
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+        ctx.beginPath();
+        ctx.arc(-slime.size/6, -slime.size/6, slime.size/4, 0, 2 * Math.PI);
+        ctx.fill();
+        
+        ctx.restore();
+    });
+}
+
+drawSlimeParticles(ctx) {
+    if (!this.slimeParticles) return;
+    
+    this.slimeParticles.forEach(particle => {
+        const alpha = particle.life / particle.maxLife;
+        ctx.fillStyle = `rgba(0, 255, 0, ${alpha})`;
+        ctx.fillRect(particle.x - particle.size/2, particle.y - particle.size/2, particle.size, particle.size);
+    });
+}
+
+drawSlimeExplosions(ctx) {
+    if (!this.slimeExplosions) return;
+    
+    this.slimeExplosions.forEach(explosion => {
+        const alpha = explosion.life / explosion.maxLife;
+        ctx.strokeStyle = `rgba(0, 255, 0, ${alpha})`;
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.arc(explosion.x, explosion.y, explosion.radius, 0, 2 * Math.PI);
+        ctx.stroke();
+    });
+}
+
+drawSlimeThrowCooldown(ctx, x, y) {
+    if (this.name !== "Tom.J" || this.slimeThrowCooldown <= 0) return;
+    
+    const cooldownPercent = this.slimeThrowCooldown / 250;
+    ctx.fillStyle = 'rgba(0, 255, 0, 0.8)';
+    ctx.fillRect(x - 30, y - 30, 60 * (1 - cooldownPercent), 6);
+}
+
+updateSlimeParticles() {
+    if (!this.slimeParticles) return;
+    
+    for (let i = this.slimeParticles.length - 1; i >= 0; i--) {
+        const particle = this.slimeParticles[i];
+        
+        particle.x += particle.velocityX;
+        particle.y += particle.velocityY;
+        particle.velocityY += 0.3;
+        particle.life--;
+        
+        if (particle.bounce && particle.y > canvas.height - 30) {
+            particle.y = canvas.height - 30;
+            particle.velocityY = -particle.velocityY * 0.5;
+        }
+        
+        if (particle.life <= 0) {
+            this.slimeParticles.splice(i, 1);
+        }
+    }
+}
+// 🟢 МЕТОД ПРОВЕРКИ СТОЛКНОВЕНИЯ СЛАЙМА
+checkSlimeCollision(slime, target, slimeIndex) {
+    try {
+        if (slime.x < target.x + target.width &&
+            slime.x + slime.size > target.x &&
+            slime.y < target.y + target.height &&
+            slime.y + slime.size > target.y) {
+            
+            slime.hasHit = true;
+            
+            // Наносим урон
+            if (target.takeDamage) {
+                target.takeDamage(slime.damage);
+            }
+            
+            // Отталкивание и замедление
+            const knockbackForce = 8;
+            target.knockback += (slime.velocityX > 0) ? knockbackForce : -knockbackForce;
+            target.velocityX *= 0.7; // Замедляем от липкости слизи
+            target.screenShake = Math.max(target.screenShake, 5);
+            
+            console.log(`🟢💥 Слайм попал в ${target.name}! Урон: ${slime.damage}`);
+            
+            // Создаем эффект взрыва
+            this.createSlimeExplosion(slime.x, slime.y);
+            
+            // Удаляем слайм
+            this.slimes.splice(slimeIndex, 1);
+        }
+    } catch (collisionError) {
+        console.error('❌ Ошибка при проверке столкновения слайма:', collisionError);
+        slime.hasHit = true;
+    }
+}
+
+// 🟢 МЕТОД СОЗДАНИЯ ВЗРЫВА СЛАЙМА
+createSlimeExplosion(x, y) {
+    if (!this.slimeExplosions) {
+        this.slimeExplosions = [];
+    }
+    if (!this.slimeParticles) {
+        this.slimeParticles = [];
+    }
+    
+    const explosion = {
+        x: x,
+        y: y,
+        radius: 0,
+        maxRadius: 50,
+        life: 40,
+        maxLife: 40
+    };
+    
+    this.slimeExplosions.push(explosion);
+    
+    // Создаем брызги слизи
+    for (let i = 0; i < 12; i++) {
+        const angle = (i / 12) * Math.PI * 2;
+        const particle = {
+            x: x,
+            y: y,
+            velocityX: Math.cos(angle) * (2 + Math.random() * 6),
+            velocityY: Math.sin(angle) * (2 + Math.random() * 6) - 3,
+            life: 50 + Math.random() * 30,
+            maxLife: 80,
+            size: 3 + Math.random() * 4,
+            bounce: true
+        };
+        
+        this.slimeParticles.push(particle);
+    }
+}
+
+// 🟢 СОЗДАНИЕ ЧАСТИЦ СЛИЗИ
+createSlimeParticles(x, y, count) {
+    if (!this.slimeParticles) {
+        this.slimeParticles = [];
+    }
+    
+    for (let i = 0; i < count; i++) {
+        const particle = {
+            x: x + (Math.random() - 0.5) * 20,
+            y: y + (Math.random() - 0.5) * 20,
+            velocityX: (Math.random() - 0.5) * 4,
+            velocityY: (Math.random() - 0.5) * 4 - 2,
+            life: 30 + Math.random() * 20,
+            maxLife: 50,
+            size: 2 + Math.random() * 3,
+            bounce: false
+        };
+        
+        this.slimeParticles.push(particle);
+    }
+}
+// ⚡ МЕТОДЫ ОБНОВЛЕНИЯ ТЕЛЕПОРТАЦИИ ДЛЯ NOXX
+updateTeleportation() {
+    if (this.name !== "Noxx" || !this.isTeleporting) return;
+    
+    this.teleportTimer--;
+    
+    switch (this.teleportPhase) {
+        case 'disappear':
+            // Фаза исчезновения
+            if (this.teleportTimer <= 0) {
+                // Переходим к фазе появления
+                this.teleportPhase = 'appear';
+                this.teleportTimer = 15; // 15 кадров на появление
+                
+                // Телепортируемся в целевую позицию
+                this.x = this.teleportTargetX;
+                this.y = this.teleportTargetY;
+                
+                // Создаем эффекты появления
+                this.createElectricParticles(this.x + this.width/2, this.y + this.height/2, 20);
+                this.teleportGlow = 40;
+                
+                console.log(`⚡ ${this.name} появляется рядом с целью!`);
+            }
+            break;
+            
+        case 'appear':
+            // Фаза появления
+            if (this.teleportTimer <= 0) {
+                // Переходим к фазе атаки
+                this.teleportPhase = 'strike';
+                this.teleportTimer = 10; // 10 кадров на атаку
+                
+                console.log(`⚡ ${this.name} готовится к электрической атаке!`);
+            }
+            break;
+            
+        case 'strike':
+            // Фаза атаки
+            if (this.teleportTimer <= 0) {
+                // Выполняем телепорт-атаку
+                this.executeTeleportStrike();
+                
+                // Завершаем телепортацию
+                this.isTeleporting = false;
+                this.teleportPhase = 'none';
+                this.teleportTimer = 0;
+                
+                console.log(`⚡ ${this.name} завершает Electric Teleport Strike!`);
+            }
+            break;
+    }
+}
+
+executeTeleportStrike() {
+    // Определяем цель
+    let target;
+    if (this === player && bot) {
+        target = bot;
+    } else if (this === bot && player) {
+        target = player;
+    } else {
+        return;
+    }
+    
+    // Проверяем дистанцию до цели
+    const distance = Math.abs(this.x - target.x);
+    
+    if (distance <= 120) { // В радиусе атаки
+        // Получаем параметры из конфигурации персонажа
+        const characterConfig = CHARACTERS.find(char => char.name === this.name);
+        const damage = characterConfig ? characterConfig.teleportDamage : 40;
+        const stunDuration = characterConfig ? characterConfig.teleportStunDuration : 45;
+        
+        // Наносим урон
+        if (target.takeDamage) {
+            target.takeDamage(damage);
+        }
+        
+        // Оглушаем цель
+        target.stunned = stunDuration;
+        
+        // Сильное отталкивание
+        const knockbackForce = 15;
+        target.knockback += (target.x > this.x) ? knockbackForce : -knockbackForce;
+        target.velocityY = Math.min(target.velocityY, -10); // Подбрасываем вверх
+        
+        // Эффекты экрана
+        target.screenShake = Math.max(target.screenShake, 12);
+        this.screenShake = Math.max(this.screenShake, 8);
+        
+        // Создаем мощные электрические эффекты
+        this.createElectricParticles(target.x + target.width/2, target.y + target.height/2, 25);
+        
+        console.log(`⚡💥 Electric Teleport Strike попал! Урон: ${damage}, Оглушение: ${stunDuration} кадров`);
+        
+        return 'hit';
+    } else {
+        console.log(`⚡❌ Electric Teleport Strike промахнулся! Дистанция: ${distance}`);
+        return 'miss';
+    }
+}
+
+updateElectricParticles() {
+    if (!this.electricParticles) return;
+    
+    for (let i = this.electricParticles.length - 1; i >= 0; i--) {
+        const particle = this.electricParticles[i];
+        
+        particle.x += particle.velocityX;
+        particle.y += particle.velocityY;
+        particle.life--;
+        
+        // Эффект молнии - случайные подергивания
+        particle.x += (Math.random() - 0.5) * 2;
+        particle.y += (Math.random() - 0.5) * 2;
+        
+        if (particle.life <= 0) {
+            this.electricParticles.splice(i, 1);
+        }
+    }
+}
+
+createElectricParticles(x, y, count) {
+    if (!this.electricParticles) {
+        this.electricParticles = [];
+    }
+    
+    for (let i = 0; i < count; i++) {
+        const angle = (i / count) * Math.PI * 2;
+        const speed = 3 + Math.random() * 5;
+        
+        const particle = {
+            x: x + (Math.random() - 0.5) * 20,
+            y: y + (Math.random() - 0.5) * 20,
+            velocityX: Math.cos(angle) * speed,
+            velocityY: Math.sin(angle) * speed,
+            life: 30 + Math.random() * 20,
+            maxLife: 50,
+            size: 2 + Math.random() * 3
+        };
+        
+        this.electricParticles.push(particle);
+    }
+}
     createMagnitudeWave(waveIndex) {
         const wave = {
             x: this.x + this.width / 2,
@@ -1806,6 +2655,241 @@ if (this.isAttacking || this.attackFrame > 0) {
             }
         }
     }
+    // 🍾 МЕТОД ОБНОВЛЕНИЯ БУТЫЛОК
+    updateBottles() {
+        if (this.name !== "vludblet" || !this.bottles) return;
+        
+        try {
+            for (let i = this.bottles.length - 1; i >= 0; i--) {
+                const bottle = this.bottles[i];
+                
+                if (!bottle) {
+                    this.bottles.splice(i, 1);
+                    continue;
+                }
+                
+                // Обновляем физику бутылки
+                bottle.velocityY += bottle.gravity;
+                bottle.x += bottle.velocityX;
+                bottle.y += bottle.velocityY;
+                bottle.rotation += 0.2;
+                
+                // Проверяем столкновение с землей
+                if (bottle.y > canvas.height - 50) {
+                    bottle.y = canvas.height - 50;
+                    
+                    if (bottle.bounces < bottle.maxBounces) {
+                        bottle.velocityY = -bottle.velocityY * 0.6;
+                        bottle.velocityX *= 0.8;
+                        bottle.bounces++;
+                        console.log(`🍾 Бутылка отскочила! Отскок ${bottle.bounces}/${bottle.maxBounces}`);
+                    } else {
+                        // Бутылка разбивается
+                        this.createBottleExplosion(bottle.x, bottle.y);
+                        this.bottles.splice(i, 1);
+                        console.log(`💥 Бутылка разбилась!`);
+                        continue;
+                    }
+                }
+                
+                // Проверяем столкновения с противником
+                if (this === player && bot && !bottle.hasHit) {
+                    this.checkBottleCollision(bottle, bot, i);
+                } else if (this === bot && player && !bottle.hasHit) {
+                    this.checkBottleCollision(bottle, player, i);
+                }
+                
+                // Удаляем бутылку если она улетела за экран
+                if (bottle.x < -50 || bottle.x > canvas.width + 50) {
+                    this.bottles.splice(i, 1);
+                }
+            }
+        } catch (error) {
+            console.error('❌ Ошибка в updateBottles:', error);
+            this.bottles = [];
+        }
+    }
+    
+    // 🍾 МЕТОД ПРОВЕРКИ СТОЛКНОВЕНИЯ БУТЫЛКИ
+    checkBottleCollision(bottle, target, bottleIndex) {
+        try {
+            // Проверяем пересечение прямоугольников
+            if (bottle.x < target.x + target.width &&
+                bottle.x + 20 > target.x &&
+                bottle.y < target.y + target.height &&
+                bottle.y + 20 > target.y) {
+                
+                bottle.hasHit = true;
+                
+                // Наносим урон
+                if (target.takeDamage) {
+                    target.takeDamage(bottle.damage);
+                }
+                
+                // Отталкивание
+                const knockbackForce = 12;
+                target.knockback += (bottle.velocityX > 0) ? knockbackForce : -knockbackForce;
+                target.velocityY = Math.min(target.velocityY, -8); // Подбрасываем вверх
+                target.screenShake = Math.max(target.screenShake, 6);
+                
+                console.log(`🍾💥 Бутылка попала в ${target.name}! Урон: ${bottle.damage}`);
+                
+                // Создаем эффект взрыва
+                this.createBottleExplosion(bottle.x, bottle.y);
+                
+                // Удаляем бутылку
+                this.bottles.splice(bottleIndex, 1);
+            }
+        } catch (collisionError) {
+            console.error('❌ Ошибка при проверке столкновения бутылки:', collisionError);
+            bottle.hasHit = true;
+        }
+    }
+    
+    // 🍾 МЕТОД СОЗДАНИЯ ВЗРЫВА БУТЫЛКИ
+    createBottleExplosion(x, y) {
+        // Инициализируем массивы если их нет
+        if (!this.bottleExplosions) {
+            this.bottleExplosions = [];
+        }
+        if (!this.glassParticles) {
+            this.glassParticles = [];
+        }
+        
+        const explosion = {
+            x: x,
+            y: y,
+            radius: 0,
+            maxRadius: 40,
+            life: 30,
+            maxLife: 30
+        };
+        
+        this.bottleExplosions.push(explosion);
+        
+        // Создаем осколки стекла
+        for (let i = 0; i < 8; i++) {
+            const angle = (i / 8) * Math.PI * 2;
+            const shard = {
+                x: x,
+                y: y,
+                velocityX: Math.cos(angle) * (3 + Math.random() * 4),
+                velocityY: Math.sin(angle) * (3 + Math.random() * 4) - 2,
+                life: 40 + Math.random() * 20,
+                maxLife: 60,
+                size: 2 + Math.random() * 2
+            };
+            
+            this.glassParticles.push(shard);
+        }
+    }
+    
+    // 🍾 МЕТОД ОБНОВЛЕНИЯ ВЗРЫВОВ
+    updateBottleExplosions() {
+        if (!this.bottleExplosions) return;
+        
+        for (let i = this.bottleExplosions.length - 1; i >= 0; i--) {
+            const explosion = this.bottleExplosions[i];
+            
+            explosion.radius += (explosion.maxRadius - explosion.radius) * 0.3;
+            explosion.life--;
+            
+            if (explosion.life <= 0) {
+                this.bottleExplosions.splice(i, 1);
+            }
+        }
+    }
+    
+    // 🍾 МЕТОД ОБНОВЛЕНИЯ ОСКОЛКОВ СТЕКЛА
+    updateGlassParticles() {
+        if (!this.glassParticles) return;
+        
+        for (let i = this.glassParticles.length - 1; i >= 0; i--) {
+            const shard = this.glassParticles[i];
+            
+            shard.x += shard.velocityX;
+            shard.y += shard.velocityY;
+            shard.velocityY += 0.3; // Гравитация
+            shard.life--;
+            
+            // Отскок от земли
+            if (shard.y > canvas.height - 30) {
+                shard.y = canvas.height - 30;
+                shard.velocityY = -shard.velocityY * 0.5;
+            }
+            
+            if (shard.life <= 0) {
+                this.glassParticles.splice(i, 1);
+            }
+        }
+    }
+    drawBottles(ctx) {
+    if (this.name !== "vludblet" || !this.bottles) return;
+    
+    this.bottles.forEach(bottle => {
+        ctx.save();
+        ctx.translate(bottle.x + 15, bottle.y + 20); // ← УВЕЛИЧИЛИ ЦЕНТР
+        ctx.rotate(bottle.rotation);
+        
+        // Тело бутылки (БОЛЬШОЕ)
+        ctx.fillStyle = '#8B4513';
+        ctx.fillRect(-15, -20, 30, 40); // ← В 2 РАЗА БОЛЬШЕ!
+        
+        // Горлышко (БОЛЬШОЕ)
+        ctx.fillStyle = '#654321';
+        ctx.fillRect(-6, -30, 12, 16);  // ← В 2 РАЗА БОЛЬШЕ!
+        
+        // Пробка (БОЛЬШАЯ)
+        ctx.fillStyle = '#2F4F4F';
+        ctx.fillRect(-4, -36, 8, 10);   // ← В 2 РАЗА БОЛЬШЕ!
+        
+        // НОВОЕ: Этикетка на бутылке
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+        ctx.fillRect(-10, -5, 20, 8);   // ← БЕЛАЯ ЭТИКЕТКА
+        
+        // НОВОЕ: Текст на этикетке
+        ctx.fillStyle = 'black';
+        ctx.font = '8px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('🍾', 0, 1);       // ← ЭМОДЗИ БУТЫЛКИ
+        
+        ctx.restore();
+    });
+}
+
+// 🍾 МЕТОД РИСОВАНИЯ ОСКОЛКОВ
+drawGlassParticles(ctx) {
+    if (!this.glassParticles) return;
+    
+    this.glassParticles.forEach(shard => {
+        const alpha = shard.life / shard.maxLife;
+        ctx.fillStyle = `rgba(220, 220, 255, ${alpha})`;
+        ctx.fillRect(shard.x - shard.size/2, shard.y - shard.size/2, shard.size, shard.size);
+    });
+}
+
+// 🍾 МЕТОД РИСОВАНИЯ ВЗРЫВОВ
+drawBottleExplosions(ctx) {
+    if (!this.bottleExplosions) return;
+    
+    this.bottleExplosions.forEach(explosion => {
+        const alpha = explosion.life / explosion.maxLife;
+        ctx.strokeStyle = `rgba(255, 165, 0, ${alpha})`;
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.arc(explosion.x, explosion.y, explosion.radius, 0, 2 * Math.PI);
+        ctx.stroke();
+    });
+}
+
+// 🍾 ИНДИКАТОР КУЛДАУНА
+drawBottleThrowCooldown(ctx, x, y) {
+    if (this.name !== "vludblet" || this.bottleThrowCooldown <= 0) return;
+    
+    const cooldownPercent = this.bottleThrowCooldown / 300;
+    ctx.fillStyle = 'rgba(139, 69, 19, 0.8)';
+    ctx.fillRect(x - 30, y - 25, 60 * (1 - cooldownPercent), 6);
+}
     
     drawMagnitudeWaves(ctx, drawX, drawY) {
         if (this.name !== "Lyron" || this.magnitudeWaves.length === 0) return;
@@ -1927,10 +3011,96 @@ if (this.isAttacking || this.attackFrame > 0) {
     // Индикатор кулдауна отключен
     return;
 }
+// ⚡ МЕТОДЫ РИСОВАНИЯ ТЕЛЕПОРТАЦИИ
+drawTeleportEffects(ctx, drawX, drawY) {
+    if (!this.isTeleporting) return;
+    
+    const centerX = drawX + this.width/2;
+    const centerY = drawY + this.height/2;
+    
+    switch(this.teleportPhase) {
+        case 'disappear':
+            // Эффект исчезновения
+            const disappearProgress = 1 - (this.teleportTimer / 20);
+            
+            // Электрическое кольцо
+            ctx.strokeStyle = `rgba(0, 255, 255, ${1 - disappearProgress})`;
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, 30 + disappearProgress * 50, 0, 2 * Math.PI);
+            ctx.stroke();
+            
+            // Искажение персонажа
+            ctx.globalAlpha = 1 - disappearProgress;
+            break;
+            
+        case 'appear':
+            // Эффект появления
+            const appearProgress = 1 - (this.teleportTimer / 15);
+            
+            // Вспышка появления
+            ctx.fillStyle = `rgba(255, 255, 255, ${1 - appearProgress})`;
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, 40 * (1 - appearProgress), 0, 2 * Math.PI);
+            ctx.fill();
+            
+            // Электрические кольца
+            for (let i = 0; i < 3; i++) {
+                const ringRadius = 60 + i * 20;
+                ctx.strokeStyle = `rgba(0, 255, 255, ${(1 - appearProgress) * (1 - i * 0.3)})`;
+                ctx.lineWidth = 3 - i;
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, ringRadius * appearProgress, 0, 2 * Math.PI);
+                ctx.stroke();
+            }
+            break;
+            
+        case 'strike':
+            // Эффект атаки
+            const strikeProgress = 1 - (this.teleportTimer / 10);
+            
+            // Мощное свечение
+            ctx.shadowColor = 'rgba(0, 255, 255, 0.8)';
+            ctx.shadowBlur = 20;
+            ctx.fillStyle = `rgba(255, 255, 255, ${strikeProgress})`;
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, 25, 0, 2 * Math.PI);
+            ctx.fill();
+            ctx.shadowBlur = 0;
+            break;
+    }
+    
+    // Восстанавливаем прозрачность
+    ctx.globalAlpha = 1;
+}
+
+drawElectricParticles(ctx) {
+    if (!this.electricParticles || this.name !== "Noxx") return;
+    
+    this.electricParticles.forEach(particle => {
+        const alpha = particle.life / particle.maxLife;
+        
+        // Основная частица
+        ctx.fillStyle = `rgba(0, 255, 255, ${alpha})`;
+        ctx.beginPath();
+        ctx.arc(particle.x, particle.y, particle.size, 0, 2 * Math.PI);
+        ctx.fill();
+        
+        // Свечение частицы
+        ctx.shadowColor = 'rgba(0, 255, 255, 0.6)';
+        ctx.shadowBlur = 10;
+        ctx.fillStyle = `rgba(255, 255, 255, ${alpha * 0.5})`;
+        ctx.beginPath();
+        ctx.arc(particle.x, particle.y, particle.size * 0.5, 0, 2 * Math.PI);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+    });
+}
     }
     
 
 // ====== ОПРЕДЕЛЕНИЯ ПЕРСОНАЖЕЙ ======
+
 
 
 
@@ -2235,67 +3405,144 @@ class BotAI {
     }
     
     executeAttack(distance) {
-        this.bot.stopBlock();
+    this.bot.stopBlock();
+    
+    // ⚡ СПОСОБНОСТИ ВСЕХ ПЕРСОНАЖЕЙ с учетом сложности
+    
+    // 1. ТЕЛЕПОРТАЦИЯ для Noxx
+    if (this.bot.name === "Noxx" && this.bot.teleportCooldown === 0 && distance > 120) {
+        let teleportChance = this.abilityChance || 0.4; // Берем из настроек сложности
         
-        // Контратака имеет приоритет
-        if (this.bot.canCounter > 0 && distance < 100) {
+        if (Math.random() < teleportChance) {
+            console.log(`🤖⚡ ${this.bot.name} готовится к телепортации! (Шанс: ${Math.round(teleportChance * 100)}%)`);
+            if (this.bot.electricTeleport()) {
+                return; // Прерываем обычные атаки
+            }
+        }
+    }
+    
+    // 2. ЗЕЛЕНАЯ ЖИЖА для Tom.J
+    if (this.bot.name === "Tom.J" && this.bot.slimeThrowCooldown === 0 && distance > 80) {
+        let slimeChance = this.abilityChance || 0.3;
+        
+        if (Math.random() < slimeChance) {
+            if (this.bot.throwSlime()) {
+                console.log(`🤖🟢 ${this.bot.name} использует зеленую жижу! (Шанс: ${Math.round(slimeChance * 100)}%)`);
+                return;
+            }
+        }
+    }
+    
+    // 3. БУТЫЛКИ для vludblet
+    if (this.bot.name === "vludblet" && this.bot.bottleThrowCooldown === 0 && distance > 80) {
+        let bottleChance = this.abilityChance || 0.3;
+        
+        if (Math.random() < bottleChance) {
+            if (this.bot.throwBottle()) {
+                console.log(`🤖🍾 ${this.bot.name} бросает бутылку! (Шанс: ${Math.round(bottleChance * 100)}%)`);
+                return;
+            }
+        }
+    }
+    
+    // 4. MAGNITUDE WAVE для Lyron
+    if (this.bot.name === "Lyron" && this.bot.abilityCooldown === 0 && distance > 100) {
+        let waveChance = this.abilityChance || 0.3;
+        
+        if (Math.random() < waveChance) {
+            if (this.bot.useMagnitudeWave()) {
+                console.log(`🤖🌊 ${this.bot.name} использует Magnitude Wave! (Шанс: ${Math.round(waveChance * 100)}%)`);
+                return;
+            }
+        }
+    }
+    
+    // 5. КОНТРАТАКА (с учетом сложности)
+    if (this.bot.canCounter > 0 && distance < 100) {
+        let counterChance = this.counterMaster ? 0.9 : 0.6; // Мастер почти всегда контратакует
+        
+        if (Math.random() < counterChance) {
             if (this.bot.counterAttack(this.target)) {
-                console.log(`🤖 ${this.bot.name} выполняет КОНТРАТАКУ! Урон: 35!`);
+                console.log(`🤖💥 ${this.bot.name} выполняет КОНТРАТАКУ! (Шанс: ${Math.round(counterChance * 100)}%)`);
                 this.consecutiveAttacks++;
                 return;
             }
         }
-        
-        // Основные атаки
-        this.performAttack();
-        
-        // Корректировка позиции во время атаки
-        if (distance > 80) {
-            if (this.bot.x < this.target.x) {
-                this.bot.moveRight();
-            } else {
-                this.bot.moveLeft();
-            }
-        }
-        
-        // Комбо-атаки
-        if (this.bot.combo > 0 && this.comboCooldown === 0 && Math.random() < 0.7) {
-            this.comboCooldown = 20;
-            setTimeout(() => this.performAttack(), 300);
+    }
+    
+    // 6. ОБЫЧНЫЕ АТАКИ
+    this.performAttack();
+    
+    // 7. КОРРЕКТИРОВКА ПОЗИЦИИ
+    if (distance > 80) {
+        if (this.bot.x < this.target.x) {
+            this.bot.moveRight();
+        } else {
+            this.bot.moveLeft();
         }
     }
     
+    // 8. КОМБО-АТАКИ (только на средней и высокой сложности)
+    if (!this.defensiveMode && this.bot.combo > 0 && this.comboCooldown === 0 && Math.random() < 0.7) {
+        this.comboCooldown = 20;
+        setTimeout(() => this.performAttack(), 300);
+    }
+}
+    
     performAttack() {
-        const distance = Math.abs(this.bot.x - this.target.x);
-        
-        if (distance > 100) return;
-        
-        let attackSuccess = false;
-        
-        // Выбор типа атаки
-        if (Math.random() < 0.3 && this.bot.heavyAttackCooldown === 0) {
-            // Тяжелая атака (30% шанс)
-            attackSuccess = this.bot.heavyAttack(this.target);
-            if (attackSuccess) {
-                console.log(`🤖 ${this.bot.name} наносит ТЯЖЕЛЫЙ удар! Урон: 25, Комбо: ${this.bot.combo}`);
-                this.consecutiveAttacks++;
-            }
-        } else if (this.bot.lightAttackCooldown === 0) {
-            // Быстрая атака
-            attackSuccess = this.bot.lightAttack(this.target);
-            if (attackSuccess) {
-                console.log(`🤖 ${this.bot.name} наносит быстрый удар! Урон: 15, Комбо: ${this.bot.combo}`);
-                this.consecutiveAttacks++;
-            }
+    const distance = Math.abs(this.bot.x - this.target.x);
+    
+    if (distance > 100) return;
+    
+    // 🟢 ЛЕГКИЙ РЕЖИМ - очень ограниченные атаки
+    if (this.defensiveMode && Math.random() > this.attackChance) {
+        console.log('🟢 ИИ решил не атаковать (пассивный режим)');
+        return; // Часто пропускает атаки
+    }
+    
+    // Проверяем лимит комбо
+    if (this.consecutiveAttacks >= this.comboLimit) {
+        console.log(`⏸️ ИИ достиг лимита комбо (${this.comboLimit}), переходит к защите`);
+        this.setState('DEFEND');
+        this.defensiveTimer = 60; // Длинная защитная пауза
+        this.consecutiveAttacks = 0;
+        return;
+    }
+    
+    let attackSuccess = false;
+    
+    // Выбор типа атаки в зависимости от сложности
+    let heavyAttackChance = 0.3; // По умолчанию
+    if (this.defensiveMode) {
+        heavyAttackChance = 0.1; // Легкий режим - редко тяжелые атаки
+    } else if (this.aggressiveness > 0.7) {
+        heavyAttackChance = 0.5; // Сложный режим - часто тяжелые атаки
+    }
+    
+    // Выполняем атаку
+    if (Math.random() < heavyAttackChance && this.bot.heavyAttackCooldown === 0) {
+        // Тяжелая атака
+        attackSuccess = this.bot.heavyAttack(this.target);
+        if (attackSuccess) {
+            console.log(`🤖 ${this.bot.name} наносит ТЯЖЕЛЫЙ удар! Урон: 25, Комбо: ${this.bot.combo}`);
+            this.consecutiveAttacks++;
         }
-        
-        // После 3 атак подряд - короткая защитная пауза
-        if (this.consecutiveAttacks >= 3) {
-            this.setState('DEFEND');
-            this.defensiveTimer = 30;
-            this.consecutiveAttacks = 0;
+    } else if (this.bot.lightAttackCooldown === 0) {
+        // Быстрая атака
+        attackSuccess = this.bot.lightAttack(this.target);
+        if (attackSuccess) {
+            console.log(`🤖 ${this.bot.name} наносит быстрый удар! Урон: 15, Комбо: ${this.bot.combo}`);
+            this.consecutiveAttacks++;
         }
     }
+    
+    // Защитная пауза после атак (больше на легком уровне)
+    if (this.consecutiveAttacks >= this.comboLimit) {
+        this.setState('DEFEND');
+        this.defensiveTimer = this.defensiveMode ? 80 : 30; // Дольше на легком
+        this.consecutiveAttacks = 0;
+    }
+}
     
     executeDefend(distance) {
         this.bot.block();
@@ -2365,9 +3612,8 @@ class BotAI {
 }
 
 // ====== ИГРОВАЯ ЛОГИКА ======
-
-const canvas = document.getElementById('gameCanvas');
-const ctx = canvas.getContext('2d');
+let canvas = null;
+let ctx = null;
 
 let player, bot, botAI;
 let gameRunning = false;
@@ -2463,42 +3709,81 @@ document.addEventListener('keydown', function(e) {
         return;
     }
     
-    switch(keyCode) {
-        case 65: // A
+    switch (keyCode) {
+        case 65: // A — движение влево
             player.moveLeft();
             showKeyPress('A');
             break;
-        case 68: // D
+
+        case 68: // D — движение вправо
             player.moveRight();
             showKeyPress('D');
             break;
-        case 87: // W
+
+        case 87: // W — прыжок
             player.jump();
             showKeyPress('W');
             break;
-        case 83: // S
+
+        case 83: // S — блок
             player.block();
             showKeyPress('S');
             break;
-            case 81: // Q - Уникальная способность Lyron
-            if (player && player.name === "Lyron") {
-                const abilityUsed = player.useMagnitudeWave();
-                if (abilityUsed) {
+
+        case 81: // Q — уникальные способности персонажей
+            if (player.name === "Lyron") {
+                const used = player.useMagnitudeWave();
+                if (used) {
                     showKeyPress('Q - MAGNITUDE WAVE! 🌊');
                     console.log('🌊 Lyron активировал Magnitude Wave!');
                 } else {
                     showKeyPress('Q - НА КУЛДАУНЕ');
                     console.log('❌ Magnitude Wave на кулдауне');
                 }
-            } else {
-                showKeyPress('Q - ТОЛЬКО ДЛЯ LYRON');
-                console.log('❌ Способность доступна только для Lyron');
-            }
+            } else if (player.name === "Tom.J") {
+                const thrown = player.throwSlime();
+                if (thrown) {
+                    showKeyPress('Q - ЗЕЛЕНАЯ ЖИЖА! 🟢💥');
+                    console.log('🟢 Tom.J выстрелил зеленой жижой!');
+                } else {
+                    showKeyPress('Q - СЛАЙМ НА КУЛДАУНЕ');
+                    console.log('❌ Выстрел слаймом на кулдауне');
+                }
+            } else if (player.name === "vludblet") {
+                const thrown = player.throwBottle();
+                if (thrown) {
+        showKeyPress('Q - БУТЫЛКА БРОШЕНА! 🍾💥');
+        console.log('🍾 vludblet бросил бутылку!');
+    } else {
+        showKeyPress('Q - БУТЫЛКА НА КУЛДАУНЕ');
+        console.log('❌ Бросок бутылки на кулдауне');
+    }
+} else if (player.name === "Noxx") {
+    // ⚡ ДОБАВЬТЕ ЭТО:
+    const teleported = player.electricTeleport();
+    if (teleported) {
+        showKeyPress('Q - ELECTRIC TELEPORT! ⚡💥');
+        console.log('⚡ Noxx активировал Electric Teleport Strike!');
+    } else {
+        showKeyPress('Q - ТЕЛЕПОРТ НА КУЛДАУНЕ');
+        console.log('❌ Electric Teleport на кулдауне');
+    }
+} else {
+    showKeyPress('Q - НЕТ СПОСОБНОСТИ');
+    console.log(`❌ У ${player.name} нет уникальной способности`);
+}
+            break;
+
+        default:
+            // другие клавиши
             break;
     }
-    
+
     e.preventDefault();
 });
+
+
+
 
 document.addEventListener('keyup', function(e) {
     const keyCode = e.keyCode || e.which;
@@ -2913,19 +4198,55 @@ function changeDifficulty(level) {
     
     switch(level) {
         case 'easy':
-            botAI.aggressiveness = 0.25;
-            botAI.reactionTime = 45;
-            console.log('🟢 Режим НОВИЧОК: Противник будет осторожнее');
+            // 🟢 ОЧЕНЬ ЛЕГКИЙ ИИ - практически пассивный
+            botAI.aggressiveness = 0.15;           // Очень низкая агрессия
+            botAI.reactionTime = 80;               // Очень медленная реакция
+            botAI.currentAggressiveness = 0.15;    // Принудительно устанавливаем
+            
+            // Дополнительные ограничения для легкого режима
+            botAI.defensiveMode = true;            // Предпочитает защиту
+            botAI.attackChance = 0.2;              // Только 20% шанс атаковать
+            botAI.comboLimit = 1;                  // Максимум 1 атака подряд
+            botAI.abilityChance = 0.1;             // Очень редко использует способности
+            
+            console.log('🟢 Режим НОВИЧОК: Противник очень пассивный и слабый');
+            console.log('   - Агрессия: 15% | Реакция: медленная');
+            console.log('   - Редко атакует, предпочитает защиту');
             break;
+            
         case 'medium':
-            botAI.aggressiveness = 0.45;
-            botAI.reactionTime = 25;
+            // 🟡 СРЕДНИЙ ИИ - сбалансированный боец
+            botAI.aggressiveness = 0.45;           // Умеренная агрессия
+            botAI.reactionTime = 35;               // Средняя реакция
+            botAI.currentAggressiveness = 0.45;
+            
+            // Стандартные настройки
+            botAI.defensiveMode = false;
+            botAI.attackChance = 0.6;              // 60% шанс атаковать
+            botAI.comboLimit = 2;                  // До 2 атак подряд
+            botAI.abilityChance = 0.3;             // Иногда использует способности
+            
             console.log('🟡 Режим ВОИН: Сбалансированный противник');
+            console.log('   - Агрессия: 45% | Реакция: средняя');
+            console.log('   - Комбинирует атаку и защиту');
             break;
+            
         case 'hard':
-            botAI.aggressiveness = 0.7;
-            botAI.reactionTime = 15;
-            console.log('🔴 Режим МАСТЕР: Агрессивный и быстрый противник!');
+            // 🔴 ОЧЕНЬ СЛОЖНЫЙ ИИ - агрессивная машина
+            botAI.aggressiveness = 0.85;           // Очень высокая агрессия
+            botAI.reactionTime = 12;               // Молниеносная реакция
+            botAI.currentAggressiveness = 0.85;
+            
+            // Агрессивные настройки
+            botAI.defensiveMode = false;
+            botAI.attackChance = 0.9;              // 90% шанс атаковать
+            botAI.comboLimit = 4;                  // До 4 атак подряд
+            botAI.abilityChance = 0.6;             // Часто использует способности
+            botAI.counterMaster = true;            // Мастер контратак
+            
+            console.log('🔴 Режим МАСТЕР: Агрессивный и смертоносный противник!');
+            console.log('   - Агрессия: 85% | Реакция: молниеносная');
+            console.log('   - Постоянно атакует, использует все возможности');
             break;
     }
     
