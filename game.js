@@ -344,15 +344,21 @@ const CHARACTERS = [
     key: "Burhan.IP",
     name: "Burhan",
     color: "#ffa502",
-    description: "Quintessence of Power GIF",
+    description: "Quintessence of Power GIF - Master of Grappling",
     element: "electric",
     images: {
       idle: "assets/Burhanf.png",
       attack: "assets/Burhanatack.png",
       portrait: "assets/Burhanf.png",
-      shield: "assets/burhanblock.png"
-    }
-  },
+      shield: "assets/burhanblock.png",
+      grapple: "assets/BurhanCombo.png"  // ← ДОБАВЬТЕ ЭТУ СТРОКУ
+    },
+    specialAbility: "powerGrapple",
+    abilityCooldown: 40,
+    grappleRange: 500,
+    throwDamage: 45,           // Убираем, больше не используется
+    stunDuration: 250
+},
   {
     key: "XEALIST",
     name: "Xealist",
@@ -363,8 +369,15 @@ const CHARACTERS = [
       idle: "assets/XEALIST.png",
       attack: "assets/XEALISTAAA.png",
       portrait: "assets/XEALIST.png",
-      shield: "assets/Xeakistblock.png"
-    }
+      shield: "assets/Xeakistblock.png",
+      powered: "assets/Xealistcombo.png",
+      poweredAttack: "assets/xealistcomboattack.png"  // ← ДОБАВЬТЕ ВАШУ PNG КАРТИНКУ ЗДЕСЬ
+    },
+    // ✨ НОВЫЕ СВОЙСТВА ДЛЯ СПОСОБНОСТИ УСИЛЕНИЯ:
+    specialAbility: "powerBoost",
+    abilityCooldown: 420,        // 7 секунд кулдаун
+    powerDuration: 300,          // 5 секунд действия (300 кадров = 5 сек)
+    damageMultiplier: 2          // Урон x2
   },
   {
     key: "DeFi.NinJa_Elijah",
@@ -418,29 +431,43 @@ const CHARACTERS = [
     key: "Heathcliff",
     name: "Heathcliff",
     color: "#ffa502",
-    description: "The Gray Cardinal of This World",
+    description: "The Gray Cardinal of This World - Master of Lightning",
     element: "electric",
     images: {
       idle: "assets/Heathcliff.png",
       attack: "assets/heatcif.png",
       portrait: "assets/Heathcliff.png",
       shield: "assets/healblock.png"
-    }
+    },
+    // ⚡ НОВЫЕ СВОЙСТВА ДЛЯ LIGHTNING CALL:
+    specialAbility: "lightningCall",
+    abilityCooldown: 360,        // 6 секунд кулдаун
+    lightningDamage: 50,         // Мощный урон от молнии
+    lightningStunDuration: 45,   // Оглушение на 45 кадров
+    lightningStrikeDelay: 60     // Задержка перед ударом (1 сек)
   },
   {
     key: "Matt",
     name: "Matt",
     color: "#ffa502",
-    description: "This isn’t just a shark; it’s MATT.",
-    element: "electric",
+    description: "This isn't just a shark; it's MATT.",
+    element: "water",
     images: {
       idle: "assets/Matt.png",
       attack: "assets/mattatack.png",
       portrait: "assets/Matt.png",
-      shield: "assets/Mattblock.png"
-    }
-  },
-  {
+      shield: "assets/Mattblock.png",
+      sharkForm: "assets/mattcombo.png"  // ← ДОБАВЬТЕ ВАШУ PNG КАРТИНКУ ЗДЕСЬ
+    },
+    // 🦈 НОВЫЕ СВОЙСТВА ДЛЯ АТАКИ АКУЛЫ:
+    specialAbility: "sharkDash",
+    abilityCooldown: 360,      // 6 секунд кулдаун
+    sharkSpeed: 25,            // Очень быстрая атака
+    sharkDamage: 50,           // Мощный укус
+    dashDistance: 400,         // Дистанция рывка
+    stunDuration: 60           // Оглушение после укуса
+},
+ {
     key: "!ZAIN",
     name: "!ZAIN",
     color: "#ffa502",
@@ -450,9 +477,17 @@ const CHARACTERS = [
       idle: "assets/ZAIN.png",
       attack: "assets/ZAINATA.png",
       portrait: "assets/ZAIN.png",
-      shield: "assets/!ZAINblock.png"
-    }
-  },
+      shield: "assets/!ZAINblock.png",
+      redLightPose: "assets/!ZAINCOMBO.png"
+    },
+    // ✨ ИСПРАВЛЕННЫЕ СВОЙСТВА ДЛЯ RED LIGHT GREEN LIGHT:
+    specialAbility: "redLightGreenLight",  // ← ЭТА СТРОКА КРИТИЧЕСКИ ВАЖНА!
+    abilityCooldown: 480,                  // 8 секунд кулдаун
+    freezeDuration: 180,                   // 3 секунды действия
+    movementDamage: 15,                    // Урон за движение
+    detectionRadius: 400,                  // Радиус действия
+    animationDuration: 60                  // Длительность анимации позы
+} ,
   {
     key: "sguzeva",
     name: "sguzeva",
@@ -793,6 +828,7 @@ class Fighter {
         this.abilityDuration = 0;      // Длительность эффекта
         this.abilityActive = false;    // Активна ли способность
         this.hitParticles = [];        // Частицы эффектов попадания
+        this.MAX_PARTICLES = 50; // 🔧 НОВАЯ СТРОКА - лимит частиц
         // 🚀 НОВЫЕ СВОЙСТВА ДЛЯ ОТТАЛКИВАНИЯ
         this.isKnockedBack = false;    // Находится ли в состоянии отталкивания
         this.knockbackResistance = 1.0; // Сопротивление отталкиванию (1.0 = норма)
@@ -838,7 +874,58 @@ class Fighter {
         this.teleportTargetY = 0;            // Целевая позиция Y
         this.electricParticles = [];         // Частицы электричества
         this.teleportGlow = 0;               // Эффект свечения при телепортации
-    }
+
+          // 🤼 НОВЫЕ СВОЙСТВА ДЛЯ БРОСКА BURHAN
+        this.isGrappling = false;            // Находится ли в процессе захвата
+        this.grappleCooldown = 0;            // Кулдаун броска (в кадрах)
+        this.grapplePhase = 'none';          // Фаза броска: 'none', 'grab', 'lift', 'throw'
+        this.grappleTimer = 0;               // Таймер текущей фазы
+        this.grappleTarget = null;           // Цель захвата
+        this.originalTargetX = 0;            // Оригинальная позиция цели X
+        this.originalTargetY = 0;            // Оригинальная позиция цели Y
+        this.liftHeight = 0;                 // Высота подъема при броске
+        this.throwParticles = [];            // Частицы эффектов броска
+        this.impactEffect = 0;               // Эффект удара о землю
+     this.impactEffect = 0;               // Эффект удара о землю
+        
+        // 🦈 НОВЫЕ СВОЙСТВА ДЛЯ АТАКИ АКУЛЫ MATT
+        // 🦈 НОВЫЕ СВОЙСТВА ДЛЯ АТАКИ АКУЛЫ MATT
+        this.isSharkDashing = false;         // Находится ли в режиме акулы
+        this.sharkPhase = 'none';            // Фаза атаки: 'none', 'transform', 'dash', 'bite', 'return'
+        this.sharkTimer = 0;                 // Таймер текущей фазы
+        this.sharkStartX = 0;                // Начальная позиция X
+        this.sharkStartY = 0;                // Начальная позиция Y
+        this.sharkTargetX = 0;               // Целевая позиция X
+        this.sharkTargetY = 0;               // Целевая позиция Y
+        this.sharkTarget = null;             // Цель атаки
+        this.sharkCooldown = 0;              // Кулдаун способности
+        this.waterParticles = [];            // Частицы воды
+        this.sharkTrail = [];                // След акулы
+        this.biteEffect = 0;                 // Эффект укуса
+        
+        // 💡 НОВЫЕ СВОЙСТВА ДЛЯ УСИЛЕНИЯ XEALIST
+        this.isPowered = false;              // Активна ли способность усиления
+        this.powerDuration = 0;              // Оставшееся время усиления
+        this.powerCooldown = 0;              // Кулдаун способности
+        this.originalDamageMultiplier = 1;   // Оригинальный множитель урона
+        
+        // ⚡ НОВЫЕ СВОЙСТВА ДЛЯ LIGHTNING CALL HEATHCLIFF
+this.lightningStrikes = [];          // Массив активных молний
+this.lightningCooldown = 0;          // Кулдаун способности
+this.lightningWarnings = [];         // Предупреждения о молниях
+this.lightningEffects = [];          // Эффекты молний
+
+// 🔴 НОВЫЕ СВОЙСТВА ДЛЯ RED LIGHT GREEN LIGHT ZAIN
+this.redLightActive = false;         // Активна ли способность "красный свет"
+this.redLightDuration = 0;           // Оставшееся время действия
+this.redLightCooldown = 0;           // Кулдаун способности
+this.redLightCountdown = 0;          // Счетчик обратного отсчета (3-2-1)
+this.redLightTarget = null;          // Цель способности
+this.movementViolations = 0;         // Количество нарушений движения
+this.lastPosition = { x: 0, y: 0 };  // Последняя позиция для отслеживания движения
+this.redLightWarnings = [];          // Визуальные предупреждения
+    }  // ← ВОТ ТУТ ЗАКРЫВАЕТСЯ constructor
+    
     
     // СИСТЕМА АНИМАЦИИ АТАК
     updateAttackAnimation() {
@@ -1014,6 +1101,15 @@ class Fighter {
      // ✨ НОВЫЕ ОБНОВЛЕНИЯ ДЛЯ СПОСОБНОСТЕЙ ✨
       // ✨ НОВЫЕ ОБНОВЛЕНИЯ ДЛЯ СПОСОБНОСТЕЙ ✨
     this.updateMagnitudeWaves();
+    // Обновляем создание волн
+if (this.abilityActive && this.waveTimer !== undefined) {
+    this.waveTimer++;
+    if (this.waveTimer >= this.waveInterval && this.nextWaveIndex <= 2) {
+        this.createMagnitudeWave(this.nextWaveIndex);
+        this.nextWaveIndex++;
+        this.waveTimer = 0;
+    }
+}
     this.updateHitParticles();
     this.updateBottles();
     this.updateBottleExplosions();
@@ -1038,9 +1134,60 @@ this.updateTeleportation();
 this.updateElectricParticles();
 
 // Обновляем кулдаун телепортации
+// ⚡ НОВЫЕ ОБНОВЛЕНИЯ ДЛЯ ТЕЛЕПОРТАЦИИ NOXX
+this.updateTeleportation();
+this.updateElectricParticles();
+
+// 🤼 НОВЫЕ ОБНОВЛЕНИЯ ДЛЯ БРОСКА BURHAN
+this.updateGrappling();
+this.updateThrowParticles();
+
+// 🦈 НОВЫЕ ОБНОВЛЕНИЯ ДЛЯ АТАКИ АКУЛЫ MATT
+this.updateSharkDash();
+this.updateWaterParticles();
+
+// Обновляем кулдауны
 if (this.teleportCooldown > 0) this.teleportCooldown--;
 if (this.teleportGlow > 0) this.teleportGlow--;
+if (this.grappleCooldown > 0) this.grappleCooldown--;
+if (this.impactEffect > 0) this.impactEffect--;
+if (this.sharkCooldown > 0) this.sharkCooldown--;  // 🦈 НОВАЯ СТРОКА
+if (this.biteEffect > 0) this.biteEffect--;        // 🦈 НОВАЯ СТРОКА
+
+// 💡 НОВОЕ: ОБНОВЛЕНИЕ СПОСОБНОСТИ УСИЛЕНИЯ XEALIST
+if (this.powerCooldown > 0) this.powerCooldown--;
+if (this.powerDuration > 0) {
+    this.powerDuration--;
+    // Когда усиление заканчивается
+    if (this.powerDuration === 0) {
+        this.isPowered = false;
+        console.log(`💡 ${this.name}: способность усиления закончилась`);
+    }
 }
+
+// ⚡ НОВОЕ: ОБНОВЛЕНИЕ LIGHTNING CALL HEATHCLIFF
+if (this.lightningCooldown > 0) this.lightningCooldown--;
+this.updateLightningStrikes();
+this.updateLightningWarnings();
+this.updateLightningEffects();
+// 🔴 НОВОЕ: ОБНОВЛЕНИЕ RED LIGHT GREEN LIGHT ZAIN
+if (this.redLightCooldown > 0) this.redLightCooldown--;
+if (this.redLightDuration > 0) {
+    this.redLightDuration--;
+    this.updateRedLightCountdown();
+    this.checkMovementViolations();
+    
+    // Когда способность заканчивается
+    if (this.redLightDuration === 0) {
+        this.redLightActive = false;
+        this.redLightTarget = null;
+        this.movementViolations = 0;
+        console.log(`🔴 ${this.name}: Red Light Green Light закончилась`);
+    }
+}
+this.updateRedLightWarnings();
+}
+
     
     draw(ctx) {
         let shakeX = 0, shakeY = 0;
@@ -1150,17 +1297,43 @@ if (!this.isTeleporting || this.teleportPhase !== 'disappear') {
         this.drawSlimes(ctx);
         this.drawSlimeParticles(ctx);
         this.drawSlimeExplosions(ctx);
-        this.drawSlimeThrowCooldown(ctx, this.x + this.width/2, this.y);
+            this.drawSlimeThrowCooldown(ctx, this.x + this.width/2, this.y);
         this.drawElectricParticles(ctx);
+        
+        // 🤼 НОВЫЕ МЕТОДЫ РИСОВАНИЯ ДЛЯ БРОСКА BURHAN
+        this.drawGrappleEffects(ctx, drawX, drawY);
+        this.drawThrowParticles(ctx);
+        this.drawGrappleCooldown(ctx, this.x + this.width/2, this.y);
+        
+        // ⚡ НОВЫЕ МЕТОДЫ РИСОВАНИЯ ДЛЯ LIGHTNING CALL HEATHCLIFF
+        this.drawLightningWarnings(ctx);
+        this.drawLightningStrikes(ctx);
+        this.drawLightningEffects(ctx);
+        this.drawLightningCooldown(ctx, this.x + this.width/2, this.y);
+        this.drawRedLightWarnings(ctx);
+this.drawRedLightEffect(ctx, drawX, drawY);
+this.drawRedLightCooldown(ctx, this.x + this.width/2, this.y);
     }
    drawCharacterWithImage(ctx, drawX, drawY) {
     // Определяем какую картинку использовать
     let imageKey = 'idle';
-if (this.isAttacking || this.attackFrame > 0) {
-    imageKey = 'attack';
-} else if (this.isBlocking) {
-    imageKey = 'shield';  // ← ДОБАВЬТЕ ЭТУ СТРОКУ
-}
+    
+    // 🔴 НОВОЕ: Проверяем Red Light позу для !ZAIN
+    if (this.name === "!ZAIN" && this.redLightActive) {
+        imageKey = 'redLightPose';  // ← НОВАЯ СТРОКА: используем PNG красной позы
+    } else if (this.name === "Burhan" && this.isGrappling && this.grapplePhase === 'throw') {
+        imageKey = 'grapple';  // ← НОВАЯ СТРОКА: используем PNG анимацию броска
+    } else if (this.name === "Matt" && this.isSharkDashing) {
+        imageKey = 'sharkForm';  // ← НОВАЯ СТРОКА: используем PNG акулы для Matt
+    } else if (this.name === "Xealist" && this.isPowered && (this.isAttacking || this.attackFrame > 0)) {
+        imageKey = 'poweredAttack';  // ← НОВАЯ PNG для усиленных атак
+    } else if (this.name === "Xealist" && this.isPowered) {
+        imageKey = 'powered';  // ← PNG для обычного состояния усиления
+    } else if (this.isAttacking || this.attackFrame > 0) {
+        imageKey = 'attack';
+    } else if (this.isBlocking) {
+        imageKey = 'shield';
+    }
     
     // Определяем какой кэш использовать - игрока или бота
     let currentCache, cacheLoaded;
@@ -1198,11 +1371,9 @@ if (this.isAttacking || this.attackFrame > 0) {
     } else {
         ctx.drawImage(img, drawX, drawY, this.width, this.height);
     }
- 
     
     // Восстанавливаем контекст
     ctx.restore();
-    
 }
  
     
@@ -1807,7 +1978,16 @@ if (this.isAttacking || this.attackFrame > 0) {
             }
         }, 250);
         
-        return this.executeAttack(target, 15, 75, 'light');
+        // 💡 УЧИТЫВАЕМ УСИЛЕНИЕ XEALIST
+        let damage = 15;
+        if (this.name === "Xealist" && this.isPowered) {
+            const characterConfig = CHARACTERS.find(char => char.name === this.name);
+            const multiplier = characterConfig ? characterConfig.damageMultiplier : 2;
+            damage = damage * multiplier;
+            console.log(`💡 УСИЛЕННАЯ атака! Урон: ${damage} (было ${15})`);
+        }
+        
+        return this.executeAttack(target, damage, 75, 'light');
     }
     
     heavyAttack(target) {
@@ -1828,7 +2008,16 @@ if (this.isAttacking || this.attackFrame > 0) {
             }
         }, 420);
         
-        return this.executeAttack(target, 25, 85, 'heavy');
+        // 💡 УЧИТЫВАЕМ УСИЛЕНИЕ XEALIST
+        let damage = 25;
+        if (this.name === "Xealist" && this.isPowered) {
+            const characterConfig = CHARACTERS.find(char => char.name === this.name);
+            const multiplier = characterConfig ? characterConfig.damageMultiplier : 2;
+            damage = damage * multiplier;
+            console.log(`💡 УСИЛЕННАЯ тяжелая атака! Урон: ${damage} (было ${25})`);
+        }
+        
+        return this.executeAttack(target, damage, 85, 'heavy');
     }
     
     counterAttack(target) {
@@ -1944,21 +2133,10 @@ if (this.isAttacking || this.attackFrame > 0) {
     // Создаем первую волну немедленно
     this.createMagnitudeWave(0);
     
-    // Создаем остальные волны с проверкой состояния игры
-    const wave2Timer = setTimeout(() => {
-        if (gameRunning && gameStarted && this.abilityActive) {
-            this.createMagnitudeWave(1);
-        }
-    }, 300);
-    
-    const wave3Timer = setTimeout(() => {
-        if (gameRunning && gameStarted && this.abilityActive) {
-            this.createMagnitudeWave(2);
-        }
-    }, 600);
-    
-    // Сохраняем таймеры для возможной очистки
-    this.waveTimers = [wave2Timer, wave3Timer];
+    // Создаем волны через update() вместо setTimeout
+this.waveTimer = 0;
+this.nextWaveIndex = 1;
+this.waveInterval = 18; // 18 кадров = ~300мс при 60 FPS
     
     // Временные бонусы
     const originalSpeed = this.moveSpeed;
@@ -2119,6 +2297,63 @@ electricTeleport() {
     // Создаем начальные электрические эффекты
     this.createElectricParticles(this.x + this.width/2, this.y + this.height/2, 15);
     
+    return true;
+}
+// 🤼 МЕТОД МОЩНОГО БРОСКА ДЛЯ BURHAN
+powerGrapple() {
+    if (this.grappleCooldown > 0 || this.name !== "Burhan") {
+        console.log(`❌ Бросок недоступен! Кулдаун: ${Math.ceil(this.grappleCooldown / 60)} сек`);
+        return false;
+    }
+    
+    if (!gameRunning || !gameStarted) {
+        console.log('❌ Игра не активна!');
+        return false;
+    }
+    
+    // Определяем цель (противника)
+    let target;
+    if (this === player && bot) {
+        target = bot;
+    } else if (this === bot && player) {
+        target = player;
+    } else {
+        console.log('❌ Цель для броска не найдена!');
+        return false;
+    }
+    
+    // Проверяем дистанцию
+    const distance = Math.abs(this.x - target.x);
+    const characterConfig = CHARACTERS.find(char => char.name === this.name);
+    const grappleRange = characterConfig ? characterConfig.grappleRange : 100;
+    
+    if (distance > grappleRange) {
+        console.log(`❌ Цель слишком далеко! Дистанция: ${distance}, нужно: ${grappleRange}`);
+        return false;
+    }
+    
+    console.log(`🤼 ${this.name} начинает POWER GRAPPLE!`);
+    
+    // Начинаем захват
+    this.isGrappling = true;
+    this.grapplePhase = 'grab';
+    this.grappleTimer = 20; // 20 кадров на захват
+    this.grappleTarget = target;
+    this.grappleCooldown = characterConfig ? characterConfig.abilityCooldown : 400;
+    
+    // Сохраняем оригинальную позицию цели
+    this.originalTargetX = target.x;
+    this.originalTargetY = target.y;
+    this.liftHeight = 0;
+    
+    // Останавливаем движение обоих персонажей
+    this.velocityX = 0;
+    this.velocityY = 0;
+    target.velocityX = 0;
+    target.velocityY = 0;
+    target.stunned = 15; // Кратковременное оглушение при захвате
+    
+    console.log(`🤼 ${this.name} захватывает ${target.name}!`);
     return true;
 }
 // 🟢 МЕТОД ОБНОВЛЕНИЯ СЛАЙМОВ
@@ -2468,6 +2703,104 @@ executeTeleportStrike() {
         return 'miss';
     }
 }
+// 🤼 МЕТОД ОБНОВЛЕНИЯ ЗАХВАТА ДЛЯ BURHAN
+updateGrappling() {
+    if (this.name !== "Burhan" || !this.isGrappling) return;
+    
+    this.grappleTimer--;
+    
+    switch (this.grapplePhase) {
+        case 'grab':
+            // Фаза захвата - просто ждем
+            if (this.grappleTimer <= 0) {
+                this.grapplePhase = 'throw';
+                this.grappleTimer = 30; // 30 кадров на анимацию броска
+                console.log(`🤼 ${this.name} готовится к броску!`);
+            }
+            break;
+            
+    case 'throw':
+    // Фаза броска - простая анимация полета вверх
+    if (this.grappleTimer <= 0) {
+        this.executeSimpleThrow();  // ← ИСПРАВЛЕНО: ВЫЗОВ НОВОГО МЕТОДА!
+        
+        // Завершаем захват
+        this.isGrappling = false;
+        this.grapplePhase = 'none';
+        this.grappleTimer = 0;
+        this.grappleTarget = null;
+        this.liftHeight = 0;
+        
+        console.log(`🤼 ${this.name} завершает Power Grapple!`);
+    }
+    break;
+    }
+}
+
+executeGrappleThrow() {
+    if (!this.grappleTarget) return;
+    
+    const target = this.grappleTarget;
+    const characterConfig = CHARACTERS.find(char => char.name === this.name);
+    
+    // Получаем параметры броска
+    const throwDamage = characterConfig ? characterConfig.throwDamage : 45;
+    const throwForce = characterConfig ? characterConfig.throwForce : 25;
+    const stunDuration = characterConfig ? characterConfig.stunDuration : 60;
+    
+    // Наносим урон
+    if (target.takeDamage) {
+        target.takeDamage(throwDamage);
+    }
+    
+    // Мощный бросок в сторону
+    const throwDirection = this.facingRight ? 1 : -1;
+    target.velocityX = throwDirection * throwForce;
+    target.velocityY = -15; // Подбрасываем вверх
+    
+    // Длительное оглушение и эффекты
+    target.stunned = stunDuration;
+    target.knockback = throwDirection * (throwForce * 0.8);
+    target.screenShake = Math.max(target.screenShake, 15);
+    this.screenShake = Math.max(this.screenShake, 10);
+    
+    // Создаем эффекты броска
+    this.createThrowParticles(target.x + target.width/2, target.y + target.height/2);
+    
+    console.log(`🤼💥 Power Grapple попал! Урон: ${throwDamage}, Оглушение: ${stunDuration} кадров`);
+    
+    return 'hit';
+}
+executeSimpleThrow() {
+    if (!this.grappleTarget) return;
+    
+    const target = this.grappleTarget;
+    const characterConfig = CHARACTERS.find(char => char.name === this.name);
+    
+    // Получаем параметры броска
+    const throwDamage = characterConfig ? characterConfig.throwDamage : 45;
+    const stunDuration = characterConfig ? characterConfig.stunDuration : 60;
+    
+    // Наносим урон
+    if (target.takeDamage) {
+        target.takeDamage(throwDamage);
+    }
+    
+    // МОЩНЫЙ БРОСОК ЗА СПИНУ
+    const throwDirection = this.facingRight ? -1 : 1;  // ОБРАТНОЕ направление (за спину)
+    target.velocityX = throwDirection * 60;             // СИЛЬНЫЙ горизонтальный бросок
+    target.velocityY = -15;                             // СИЛЬНЫЙ подброс вверх
+    
+    // Длительное оглушение и эффекты
+    target.stunned = stunDuration;
+    target.knockback = throwDirection * 25;             // Дополнительное отталкивание
+    target.screenShake = Math.max(target.screenShake, 15);  // Сильная тряска
+    this.screenShake = Math.max(this.screenShake, 10);      // Тряска для Burhan
+    
+    console.log(`🤼💥 Power Grapple! МОЩНЫЙ БРОСОК ЗА СПИНУ! Урон: ${throwDamage}`);
+    
+    return 'hit';
+}
 
 updateElectricParticles() {
     if (!this.electricParticles) return;
@@ -2594,24 +2927,33 @@ createElectricParticles(x, y, count) {
     }
     
     createHitEffect(x, y, color) {
-        for (let i = 0; i < 8; i++) {
-            const angle = (i / 8) * Math.PI * 2;
-            const particle = {
-                x: x,
-                y: y,
-                velocityX: Math.cos(angle) * (5 + Math.random() * 5),
-                velocityY: Math.sin(angle) * (5 + Math.random() * 5),
-                life: 30,
-                maxLife: 30,
-                color: color,
-                size: 3 + Math.random() * 3
-            };
-            
-            this.hitParticles.push(particle);
-            
+    // 🔧 ПРОВЕРЯЕМ ЛИМИТ ПЕРЕД СОЗДАНИЕМ
+    if (this.hitParticles.length >= this.MAX_PARTICLES) {
+        console.log(`⚠️ Достигнут лимит частиц: ${this.MAX_PARTICLES}`);
+        return; // Не создаем новые частицы
+    }
+    
+    for (let i = 0; i < 8; i++) {
+        // 🔧 ДОБАВЛЯЕМ ПРОВЕРКУ В ЦИКЛЕ
+        if (this.hitParticles.length >= this.MAX_PARTICLES) {
+            break; // Прерываем если достигли лимита
         }
         
+        const angle = (i / 8) * Math.PI * 2;
+        const particle = {
+            x: x,
+            y: y,
+            velocityX: Math.cos(angle) * (5 + Math.random() * 5),
+            velocityY: Math.sin(angle) * (5 + Math.random() * 5),
+            life: 30,
+            maxLife: 30,
+            color: color,
+            size: 3 + Math.random() * 3
+        };
+        
+        this.hitParticles.push(particle);
     }
+}
      applyWaveKnockback(wave, target) {
     // Рассчитываем направление отталкивания
     const deltaX = (target.x + target.width/2) - wave.x;
@@ -2642,19 +2984,21 @@ createElectricParticles(x, y, count) {
 }
     
     updateHitParticles() {
-        for (let i = this.hitParticles.length - 1; i >= 0; i--) {
-            const particle = this.hitParticles[i];
-            
-            particle.x += particle.velocityX;
-            particle.y += particle.velocityY;
-            particle.velocityY += 0.3;
-            particle.life--;
-            
-            if (particle.life <= 0) {
-                this.hitParticles.splice(i, 1);
-            }
-        }
+    // 🔧 БЫСТРАЯ ФИЛЬТРАЦИЯ ВМЕСТО SPLICE
+    this.hitParticles = this.hitParticles.filter(particle => {
+        particle.x += particle.velocityX;
+        particle.y += particle.velocityY;
+        particle.velocityY += 0.3;
+        particle.life--;
+        
+        return particle.life > 0; // Оставляем только живые частицы
+    });
+    
+    // 🔧 ЛОГИРУЕМ ЕСЛИ МНОГО ЧАСТИЦ
+    if (this.hitParticles.length > 30) {
+        console.log(`⚠️ Много частиц: ${this.hitParticles.length}/${this.MAX_PARTICLES}`);
     }
+}
     // 🍾 МЕТОД ОБНОВЛЕНИЯ БУТЫЛОК
     updateBottles() {
         if (this.name !== "vludblet" || !this.bottles) return;
@@ -2855,6 +3199,53 @@ createElectricParticles(x, y, count) {
         
         ctx.restore();
     });
+}
+// 🤼 ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ ДЛЯ БРОСКА BURHAN
+updateThrowParticles() {
+    if (this.name !== "Burhan") return;
+    
+    if (this.throwParticles) {
+        this.throwParticles = [];
+    }
+}
+
+createThrowParticles(x, y) {
+    if (!this.throwParticles) {
+        this.throwParticles = [];
+    }
+    
+    // Создаем мощный взрыв частиц
+    for (let i = 0; i < 20; i++) {
+        const angle = (i / 20) * Math.PI * 2;
+        const speed = 4 + Math.random() * 8;
+        
+        const particle = {
+            x: x + (Math.random() - 0.5) * 30,
+            y: y + (Math.random() - 0.5) * 30,
+            velocityX: Math.cos(angle) * speed,
+            velocityY: Math.sin(angle) * speed - 3,
+            life: 40 + Math.random() * 30,
+            maxLife: 70,
+            size: 3 + Math.random() * 4
+        };
+        
+        this.throwParticles.push(particle);
+    }
+    
+    // Дополнительные искры для эпичности
+    for (let i = 0; i < 10; i++) {
+        const particle = {
+            x: x,
+            y: y,
+            velocityX: (Math.random() - 0.5) * 12,
+            velocityY: (Math.random() - 0.5) * 12 - 5,
+            life: 60 + Math.random() * 40,
+            maxLife: 100,
+            size: 2 + Math.random() * 3
+        };
+        
+        this.throwParticles.push(particle);
+    }
 }
 
 // 🍾 МЕТОД РИСОВАНИЯ ОСКОЛКОВ
@@ -3095,8 +3486,951 @@ drawElectricParticles(ctx) {
         ctx.fill();
         ctx.shadowBlur = 0;
     });
+}// 🤼 МЕТОДЫ РИСОВАНИЯ ЭФФЕКТОВ БРОСКА ДЛЯ BURHAN
+drawGrappleEffects(ctx, drawX, drawY) {
+    return;
+}
+
+drawThrowParticles(ctx) {
+    return;
+}
+
+drawGrappleCooldown(ctx, x, y) {
+    if (this.name !== "Burhan" || this.grappleCooldown <= 0) return;
+    
+    const cooldownPercent = this.grappleCooldown / 400;
+    ctx.fillStyle = 'rgba(255, 140, 0, 0.8)';
+    ctx.fillRect(x - 30, y - 35, 60 * (1 - cooldownPercent), 6);
+}
+// ⚡ МЕТОДЫ РИСОВАНИЯ LIGHTNING CALL ДЛЯ HEATHCLIFF
+drawLightningWarnings(ctx) {
+    if (!this.lightningWarnings || this.name !== "Heathcliff") return;
+    
+    this.lightningWarnings.forEach(warning => {
+        // Пульсирующий круг предупреждения
+        const alpha = warning.intensity;
+        const pulseSize = warning.size + Math.sin(Date.now() * 0.02) * 10;
+        
+        // Красный предупреждающий круг
+        ctx.strokeStyle = `rgba(255, 0, 0, ${alpha})`;
+        ctx.lineWidth = 6;
+        ctx.setLineDash([10, 5]);
+        ctx.beginPath();
+        ctx.arc(warning.targetX, warning.targetY, pulseSize, 0, 2 * Math.PI);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        
+        // Внутреннее свечение
+        ctx.fillStyle = `rgba(255, 255, 0, ${alpha * 0.3})`;
+        ctx.beginPath();
+        ctx.arc(warning.targetX, warning.targetY, pulseSize * 0.7, 0, 2 * Math.PI);
+        ctx.fill();
+        
+        // Символ молнии в центре
+        ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
+        ctx.font = 'bold 24px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('⚡', warning.targetX, warning.targetY + 8);
+    });
+}
+
+drawLightningStrikes(ctx) {
+    if (!this.lightningStrikes || this.name !== "Heathcliff") return;
+    
+    this.lightningStrikes.forEach(lightning => {
+        const alpha = lightning.intensity;
+        const time = Date.now() * 0.01;
+        const pulse = 1 + Math.sin(time * 3) * 0.4;
+        
+        // 🌟 БОЖЕСТВЕННОЕ СВЕЧЕНИЕ ВОКРУГ ЦЕЛИ
+        const glowRadius = 60 * pulse;
+        const gradient = ctx.createRadialGradient(
+            lightning.targetX, lightning.targetY, 0,
+            lightning.targetX, lightning.targetY, glowRadius
+        );
+        gradient.addColorStop(0, `rgba(255, 255, 255, ${alpha * 0.8})`);
+        gradient.addColorStop(0.3, `rgba(100, 200, 255, ${alpha * 0.5})`);
+        gradient.addColorStop(0.7, `rgba(255, 255, 0, ${alpha * 0.2})`);
+        gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        
+        ctx.fillStyle = gradient;
+        ctx.beginPath();
+        ctx.arc(lightning.targetX, lightning.targetY, glowRadius, 0, 2 * Math.PI);
+        ctx.fill();
+        
+        // ⚡ МНОЖЕСТВЕННЫЕ МОЛНИИ
+        for (let bolt = 0; bolt < 3; bolt++) {
+            const offsetX = (bolt - 1) * 20;
+            const boltAlpha = alpha * (1 - bolt * 0.3);
+            
+            ctx.strokeStyle = `rgba(255, 255, 255, ${boltAlpha})`;
+            ctx.lineWidth = (8 - bolt * 2) * pulse;
+            ctx.shadowColor = `rgba(100, 200, 255, ${boltAlpha})`;
+            ctx.shadowBlur = 25;
+            
+            // Хаотичная молния
+            ctx.beginPath();
+            ctx.moveTo(lightning.targetX + offsetX, 0);
+            
+            let currentX = lightning.targetX + offsetX;
+            for (let segment = 1; segment <= 8; segment++) {
+                const segmentY = (canvas.height / 8) * segment;
+                const chaos = (Math.random() - 0.5) * 60;
+                currentX += chaos * 0.3;
+                
+                ctx.lineTo(currentX, segmentY);
+                
+                // Мини-вспышки по пути
+                if (Math.random() < 0.4) {
+                    ctx.fillStyle = `rgba(255, 255, 255, ${boltAlpha * 0.8})`;
+                    ctx.beginPath();
+                    ctx.arc(currentX, segmentY, 3 * pulse, 0, 2 * Math.PI);
+                    ctx.fill();
+                }
+            }
+            
+            ctx.lineTo(lightning.targetX, lightning.targetY);
+            ctx.stroke();
+        }
+        
+        // 🔥 ЭНЕРГЕТИЧЕСКИЕ КОЛЬЦА
+        for (let ring = 0; ring < 4; ring++) {
+            const ringRadius = (20 + ring * 15) * pulse;
+            const ringAlpha = alpha * (1 - ring * 0.2);
+            
+            ctx.strokeStyle = `rgba(255, ${200 - ring * 30}, ${100 + ring * 30}, ${ringAlpha})`;
+            ctx.lineWidth = 6 - ring;
+            ctx.setLineDash([10, 5]);
+            
+            ctx.beginPath();
+            ctx.arc(lightning.targetX, lightning.targetY, ringRadius, time + ring, time + ring + Math.PI);
+            ctx.stroke();
+            ctx.setLineDash([]);
+        }
+        
+        // ⭐ ЭНЕРГЕТИЧЕСКИЕ ЧАСТИЦЫ
+        for (let particle = 0; particle < 15; particle++) {
+            const angle = (particle / 15) * Math.PI * 2 + time;
+            const distance = 30 + Math.sin(time + particle) * 20;
+            const particleX = lightning.targetX + Math.cos(angle) * distance;
+            const particleY = lightning.targetY + Math.sin(angle) * distance;
+            
+            ctx.fillStyle = `rgba(255, 255, ${Math.floor(Math.random() * 100 + 155)}, ${alpha * 0.9})`;
+            ctx.shadowColor = 'rgba(255, 255, 0, 0.8)';
+            ctx.shadowBlur = 10;
+            
+            ctx.beginPath();
+            ctx.arc(particleX, particleY, 2 + Math.sin(time + particle) * 1, 0, 2 * Math.PI);
+            ctx.fill();
+        }
+        
+        // 💫 ЦЕНТРАЛЬНАЯ ЭНЕРГЕТИЧЕСКАЯ СФЕРА
+        ctx.shadowColor = 'rgba(255, 255, 255, 0.9)';
+        ctx.shadowBlur = 30;
+        
+        // Внешняя сфера
+        ctx.fillStyle = `rgba(100, 200, 255, ${alpha * 0.6})`;
+        ctx.beginPath();
+        ctx.arc(lightning.targetX, lightning.targetY, 25 * pulse, 0, 2 * Math.PI);
+        ctx.fill();
+        
+        // Средняя сфера
+        ctx.fillStyle = `rgba(255, 255, 255, ${alpha * 0.8})`;
+        ctx.beginPath();
+        ctx.arc(lightning.targetX, lightning.targetY, 15 * pulse, 0, 2 * Math.PI);
+        ctx.fill();
+        
+        // Ядро
+        ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
+        ctx.beginPath();
+        ctx.arc(lightning.targetX, lightning.targetY, 8 * pulse, 0, 2 * Math.PI);
+        ctx.fill();
+        
+        // 🌈 РАДУЖНЫЕ ВСПОЛОХИ
+        const colors = ['255,0,0', '255,165,0', '255,255,0', '0,255,0', '0,0,255', '75,0,130', '238,130,238'];
+        for (let i = 0; i < colors.length; i++) {
+            const flashAngle = time * 2 + (i / colors.length) * Math.PI * 2;
+            const flashX = lightning.targetX + Math.cos(flashAngle) * 40;
+            const flashY = lightning.targetY + Math.sin(flashAngle) * 40;
+            
+            ctx.fillStyle = `rgba(${colors[i]}, ${alpha * 0.4})`;
+            ctx.beginPath();
+            ctx.arc(flashX, flashY, 4, 0, 2 * Math.PI);
+            ctx.fill();
+        }
+        
+        ctx.shadowBlur = 0;
+    });
+}
+
+drawLightningEffects(ctx) {
+    if (!this.lightningEffects) return;
+    
+    this.lightningEffects.forEach(effect => {
+        const alpha = effect.life / effect.maxLife;
+        
+        if (effect.type === 'spark') {
+            // Яркие искры
+            ctx.fillStyle = `rgba(255, 255, 0, ${alpha})`;
+            ctx.beginPath();
+            ctx.arc(effect.x, effect.y, effect.size, 0, 2 * Math.PI);
+            ctx.fill();
+            
+            // Свечение искр
+            ctx.shadowColor = 'rgba(255, 255, 0, 0.8)';
+            ctx.shadowBlur = 8;
+            ctx.fillStyle = `rgba(255, 255, 255, ${alpha * 0.8})`;
+            ctx.beginPath();
+            ctx.arc(effect.x, effect.y, effect.size * 0.5, 0, 2 * Math.PI);
+            ctx.fill();
+            ctx.shadowBlur = 0;
+        } else {
+            // Электрические разряды
+            ctx.strokeStyle = `rgba(0, 255, 255, ${alpha})`;
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(effect.x - effect.size, effect.y - effect.size);
+            ctx.lineTo(effect.x + effect.size, effect.y + effect.size);
+            ctx.moveTo(effect.x + effect.size, effect.y - effect.size);
+            ctx.lineTo(effect.x - effect.size, effect.y + effect.size);
+            ctx.stroke();
+        }
+    });
+}
+
+drawLightningCooldown(ctx, x, y) {
+    if (this.name !== "Heathcliff" || this.lightningCooldown <= 0) return;
+    
+    const cooldownPercent = this.lightningCooldown / 360;
+    ctx.fillStyle = 'rgba(255, 255, 0, 0.8)';
+    ctx.fillRect(x - 30, y - 40, 60 * (1 - cooldownPercent), 6);
+    
+    // Иконка молнии рядом с полоской
+    if (cooldownPercent > 0.5) {
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+        ctx.font = 'bold 12px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('⚡', x, y - 45);
+    }
+}
+// 🔴 МЕТОДЫ РИСОВАНИЯ RED LIGHT GREEN LIGHT ДЛЯ !ZAIN
+drawRedLightWarnings(ctx) {
+    if (!this.redLightWarnings || this.name !== "!ZAIN") return;
+    
+    this.redLightWarnings.forEach(warning => {
+        const alpha = warning.alpha;
+        
+        // Красный круг предупреждения
+        ctx.strokeStyle = `rgba(255, 0, 0, ${alpha})`;
+        ctx.lineWidth = 6;
+        ctx.setLineDash([5, 5]);
+        ctx.beginPath();
+        ctx.arc(warning.x, warning.y, warning.size, 0, 2 * Math.PI);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        
+        // Внутреннее свечение
+        ctx.fillStyle = `rgba(255, 0, 0, ${alpha * 0.3})`;
+        ctx.beginPath();
+        ctx.arc(warning.x, warning.y, warning.size * 0.7, 0, 2 * Math.PI);
+        ctx.fill();
+        
+        // Текст "СТОЙ!"
+        ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
+        ctx.font = 'bold 16px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('DONT MOVE!', warning.x, warning.y + 5);
+    });
+}
+
+drawRedLightEffect(ctx, drawX, drawY) {
+    if (this.name !== "!ZAIN" || !this.redLightActive) return;
+    
+    const centerX = drawX + this.width/2;
+    const centerY = drawY + this.height/2;
+    
+    // Красное свечение вокруг !ZAIN
+    const glowRadius = 80 + Math.sin(Date.now() * 0.01) * 20;
+    const gradient = ctx.createRadialGradient(
+        centerX, centerY, 0,
+        centerX, centerY, glowRadius
+    );
+    gradient.addColorStop(0, 'rgba(255, 0, 0, 0.4)');
+    gradient.addColorStop(0.5, 'rgba(255, 0, 0, 0.2)');
+    gradient.addColorStop(1, 'rgba(255, 0, 0, 0)');
+    
+    ctx.fillStyle = gradient;
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, glowRadius, 0, 2 * Math.PI);
+    ctx.fill();
+    
+    // Счетчик времени над головой
+    if (this.redLightCountdown > 0) {
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+        ctx.font = 'bold 48px Arial';
+        ctx.textAlign = 'center';
+        ctx.strokeStyle = 'rgba(255, 0, 0, 0.8)';
+        ctx.lineWidth = 4;
+        
+        const countdownText = this.redLightCountdown.toString();
+        ctx.strokeText(countdownText, centerX, centerY - 60);
+        ctx.fillText(countdownText, centerX, centerY - 60);
+    } else {
+        // Текст "НЕ ДВИГАЙСЯ!"
+        ctx.fillStyle = 'rgba(255, 0, 0, 0.9)';
+        ctx.font = 'bold 20px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('НЕ ДВИГАЙСЯ!', centerX, centerY - 60);
+    }
+}
+
+drawRedLightCooldown(ctx, x, y) {
+    if (this.name !== "!ZAIN" || this.redLightCooldown <= 0) return;
+    
+    const cooldownPercent = this.redLightCooldown / 480;
+    ctx.fillStyle = 'rgba(255, 0, 0, 0.8)';
+    ctx.fillRect(x - 30, y - 45, 60 * (1 - cooldownPercent), 6);
+    
+    // Иконка способности
+    if (cooldownPercent > 0.5) {
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+        ctx.font = 'bold 12px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('🔴', x, y - 50);
+    }
+}
+sharkDash() {
+    if (this.sharkCooldown > 0 || this.name !== "Matt") {
+        console.log(`❌ Shark Dash недоступен! Кулдаун: ${Math.ceil(this.sharkCooldown / 60)} сек`);
+        return false;
+    }
+    
+    if (!gameRunning || !gameStarted) {
+        console.log('❌ Игра не активна!');
+        return false;
+    }
+    
+    // Определяем цель (противника)
+    let target;
+    if (this === player && bot) {
+        target = bot;
+    } else if (this === bot && player) {
+        target = player;
+    } else {
+        console.log('❌ Цель для Shark Dash не найдена!');
+        return false;
+    }
+    
+    console.log(`🦈 ${this.name} превращается в АКУЛУ и летит прямо!`);
+
+// Запоминаем начальную позицию
+this.sharkStartX = this.x;
+this.sharkStartY = this.y;
+this.sharkTarget = target;
+
+// ПРЯМОЙ ПОЛЕТ В НАПРАВЛЕНИИ, КУДА СМОТРИТ
+const characterConfig = CHARACTERS.find(char => char.name === this.name);
+const dashDistance = characterConfig ? characterConfig.dashDistance : 400;
+
+this.sharkTargetX = this.x + (this.facingRight ? dashDistance : -dashDistance);
+this.sharkTargetY = this.y; // НА ТОМ ЖЕ УРОВНЕ
+    
+    // Начинаем атаку акулы
+    this.isSharkDashing = true;
+    this.sharkPhase = 'transform';
+    this.sharkTimer = 15; // 15 кадров на превращение
+    this.sharkCooldown = 360; // 6 секунд кулдаун
+    
+    // Создаем водяные эффекты
+    this.createWaterParticles(this.x + this.width/2, this.y + this.height/2, 12);
+    
+    return true;
+}
+// 💡 МЕТОД АКТИВАЦИИ УСИЛЕНИЯ ДЛЯ XEALIST
+powerBoost() {
+    if (this.powerCooldown > 0 || this.name !== "Xealist") {
+        console.log(`❌ Power Boost недоступен! Кулдаун: ${Math.ceil(this.powerCooldown / 60)} сек`);
+        return false;
+    }
+    
+    if (!gameRunning || !gameStarted) {
+        console.log('❌ Игра не активна!');
+        return false;
+    }
+    
+    console.log(`💡 ${this.name} активирует POWER BOOST! Урон x2 на 5 секунд!`);
+    
+    // Получаем настройки из конфигурации персонажа
+    const characterConfig = CHARACTERS.find(char => char.name === this.name);
+    
+    // Активируем усиление
+    this.isPowered = true;
+    this.powerDuration = characterConfig ? characterConfig.powerDuration : 300; // 5 секунд
+    this.powerCooldown = characterConfig ? characterConfig.abilityCooldown : 420; // 7 секунд кулдаун
+    
+    console.log(`💡 Power Boost активирован! Длительность: ${this.powerDuration/60} сек, Кулдаун: ${this.powerCooldown/60} сек`);
+    return true;
+}
+
+// ⚡ МЕТОД LIGHTNING CALL ДЛЯ HEATHCLIFF
+lightningCall() {
+    if (this.lightningCooldown > 0 || this.name !== "Heathcliff") {
+        console.log(`❌ Lightning Call недоступен! Кулдаун: ${Math.ceil(this.lightningCooldown / 60)} сек`);
+        return false;
+    }
+    
+    if (!gameRunning || !gameStarted) {
+        console.log('❌ Игра не активна!');
+        return false;
+    }
+    
+    // Определяем цель (противника)
+    let target;
+    if (this === player && bot) {
+        target = bot;
+    } else if (this === bot && player) {
+        target = player;
+    } else {
+        console.log('❌ Цель для Lightning Call не найдена!');
+        return false;
+    }
+    
+    console.log(`⚡ ${this.name} призывает МОЛНИЮ с анимацией!`);
+    
+    // Создаем простую молнию
+    const lightning = {
+        x: target.x + target.width/2,
+        y: 0, // Начинается с верха экрана
+        targetX: target.x + target.width/2,
+        targetY: target.y + target.height/2,
+        life: 20, // 20 кадров анимации
+        maxLife: 20,
+        width: 8,
+        intensity: 1
+    };
+    
+    if (!this.lightningStrikes) {
+        this.lightningStrikes = [];
+    }
+    
+    this.lightningStrikes.push(lightning);
+    
+    // Наносим урон сразу
+    const characterConfig = CHARACTERS.find(char => char.name === this.name);
+    const damage = characterConfig ? characterConfig.lightningDamage : 50;
+    const stunDuration = characterConfig ? characterConfig.lightningStunDuration : 45;
+    
+    if (target.takeDamage) {
+        target.takeDamage(damage);
+    }
+    
+    target.stunned = stunDuration;
+    target.screenShake = Math.max(target.screenShake, 15);
+    
+    this.lightningCooldown = characterConfig ? characterConfig.abilityCooldown : 360;
+    
+    console.log(`⚡💥 Lightning Call с анимацией! Урон: ${damage}`);
+    
+    return true;
+}
+// 🔴 МЕТОД RED LIGHT GREEN LIGHT ДЛЯ ZAIN
+redLightGreenLight() {
+    if (this.redLightCooldown > 0 || this.name !== "!ZAIN") {
+        console.log(`❌ Red Light Green Light недоступен! Кулдаун: ${Math.ceil(this.redLightCooldown / 60)} сек`);
+        return false;
+    }
+    
+    if (!gameRunning || !gameStarted) {
+        console.log('❌ Игра не активна!');
+        return false;
+    }
+    
+    // Определяем цель (противника)
+    let target;
+    if (this === player && bot) {
+        target = bot;
+    } else if (this === bot && player) {
+        target = player;
+    } else {
+        console.log('❌ Цель для Red Light Green Light не найдена!');
+        return false;
+    }
+    
+    // Проверяем дистанцию
+    const characterConfig = CHARACTERS.find(char => char.name === this.name);
+    const detectionRadius = characterConfig ? characterConfig.detectionRadius : 400;
+    const distance = Math.abs(this.x - target.x);
+    
+    if (distance > detectionRadius) {
+        console.log(`❌ Цель слишком далеко! Дистанция: ${distance}, радиус: ${detectionRadius}`);
+        return false;
+    }
+    
+    console.log(`🔴 ${this.name} активирует RED LIGHT GREEN LIGHT! Не двигайся или получишь урон!`);
+    
+    // Активируем способность
+    this.redLightActive = true;
+    this.redLightDuration = characterConfig ? characterConfig.freezeDuration : 180; // 3 секунды
+    this.redLightCooldown = characterConfig ? characterConfig.abilityCooldown : 480; // 8 секунд
+    this.redLightCountdown = 3; // Счетчик 3-2-1
+    this.redLightTarget = target;
+    
+    // Запоминаем текущую позицию цели для отслеживания движения
+    this.lastPosition.x = target.x;
+    this.lastPosition.y = target.y;
+    this.movementViolations = 0;
+    
+    console.log(`🔴 Red Light Green Light активирован на ${this.redLightDuration/60} секунд! Не двигайся, ${target.name}!`);
+    return true;
+}
+// ⚡ МЕТОД СОЗДАНИЯ УДАРА МОЛНИИ
+createLightningStrike(x, y) {
+    const characterConfig = CHARACTERS.find(char => char.name === this.name);
+    const damage = characterConfig ? characterConfig.lightningDamage : 50;
+    const stunDuration = characterConfig ? characterConfig.lightningStunDuration : 45;
+    
+    // Создаем молнию
+    const lightning = {
+        x: x,
+        y: 0, // Начинается с верха экрана
+        targetX: x,
+        targetY: y,
+        life: 30,
+        maxLife: 30,
+        width: 15 + Math.random() * 10,
+        intensity: 1,
+        hasHit: false,
+        damage: damage,
+        stunDuration: stunDuration
+    };
+    
+    if (!this.lightningStrikes) {
+        this.lightningStrikes = [];
+    }
+    
+    this.lightningStrikes.push(lightning);
+    
+    console.log(`⚡ Молния ударяет в точку (${x}, ${y})! Урон: ${damage}`);
+    
+    // Проверяем попадание в цель
+    this.checkLightningHit(lightning);
+}
+
+// ⚡ ОБНОВЛЕНИЕ ПРЕДУПРЕЖДЕНИЙ О МОЛНИЯХ
+updateLightningWarnings() {
+    if (!this.lightningWarnings || this.name !== "Heathcliff") return;
+    
+    for (let i = this.lightningWarnings.length - 1; i >= 0; i--) {
+        const warning = this.lightningWarnings[i];
+        
+        warning.life--;
+        warning.size = warning.maxSize * (1 - warning.life / warning.maxLife);
+        warning.intensity = warning.life / warning.maxLife;
+        
+        if (warning.life <= 0) {
+            this.lightningWarnings.splice(i, 1);
+        }
+    }
+}
+
+// ⚡ ОБНОВЛЕНИЕ УДАРОВ МОЛНИЙ
+updateLightningStrikes() {
+    if (!this.lightningStrikes || this.name !== "Heathcliff") return;
+    
+    for (let i = this.lightningStrikes.length - 1; i >= 0; i--) {
+        const lightning = this.lightningStrikes[i];
+        
+        lightning.life--;
+        lightning.intensity = lightning.life / lightning.maxLife;
+        
+        if (lightning.life <= 0) {
+            this.lightningStrikes.splice(i, 1);
+        }
+    }
+}
+
+// ⚡ ПРОВЕРКА ПОПАДАНИЯ МОЛНИИ
+checkLightningHit(lightning) {
+    // Определяем цель
+    let target;
+    if (this === player && bot) {
+        target = bot;
+    } else if (this === bot && player) {
+        target = player;
+    } else {
+        return;
+    }
+    
+    // Проверяем попадание в область молнии
+    const distance = Math.abs(lightning.targetX - (target.x + target.width/2));
+    
+    if (distance <= 60 && !lightning.hasHit) { // Радиус попадания 60 пикселей
+        lightning.hasHit = true;
+        
+        // Наносим урон
+        if (target.takeDamage) {
+            target.takeDamage(lightning.damage);
+        }
+        
+        // Оглушаем цель
+        target.stunned = lightning.stunDuration;
+        
+        // Сильное отталкивание и подброс
+        target.velocityY = Math.min(target.velocityY, -15); // Подбрасываем вверх
+        target.screenShake = Math.max(target.screenShake, 20);
+        
+        // Создаем эффекты
+        this.createLightningEffects(lightning.targetX, lightning.targetY);
+        
+        console.log(`⚡💥 Lightning Call попал! Урон: ${lightning.damage}, Оглушение: ${lightning.stunDuration} кадров`);
+        
+        return 'hit';
+    }
+    
+    return 'miss';
+}
+
+// ⚡ СОЗДАНИЕ ЭФФЕКТОВ МОЛНИИ
+createLightningEffects(x, y) {
+    if (!this.lightningEffects) {
+        this.lightningEffects = [];
+    }
+    
+    // Создаем искры и разряды
+    for (let i = 0; i < 15; i++) {
+        const angle = (i / 15) * Math.PI * 2;
+        const speed = 5 + Math.random() * 8;
+        
+        const effect = {
+            x: x + (Math.random() - 0.5) * 40,
+            y: y + (Math.random() - 0.5) * 40,
+            velocityX: Math.cos(angle) * speed,
+            velocityY: Math.sin(angle) * speed - 3,
+            life: 40 + Math.random() * 30,
+            maxLife: 70,
+            size: 3 + Math.random() * 5,
+            type: Math.random() < 0.5 ? 'spark' : 'bolt'
+        };
+        
+        this.lightningEffects.push(effect);
+    }
+}
+
+// ⚡ ОБНОВЛЕНИЕ ЭФФЕКТОВ МОЛНИИ
+updateLightningEffects() {
+    if (!this.lightningEffects) return;
+    
+    for (let i = this.lightningEffects.length - 1; i >= 0; i--) {
+        const effect = this.lightningEffects[i];
+        
+        effect.x += effect.velocityX;
+        effect.y += effect.velocityY;
+        effect.velocityY += 0.3; // Гравитация
+        effect.life--;
+        
+        // Эффект молнии - случайные подергивания
+        if (effect.type === 'bolt') {
+            effect.x += (Math.random() - 0.5) * 3;
+            effect.y += (Math.random() - 0.5) * 3;
+        }
+        
+        if (effect.life <= 0) {
+            this.lightningEffects.splice(i, 1);
+        }
+    }
+}
+// 🔴 МЕТОДЫ ОБНОВЛЕНИЯ RED LIGHT GREEN LIGHT ДЛЯ ZAIN
+updateRedLightCountdown() {
+    if (this.name !== "!ZAIN" || !this.redLightActive) return;
+    
+    // Обновляем счетчик каждые 60 кадров (1 секунда)
+    const secondsPassed = Math.floor((180 - this.redLightDuration) / 60);
+    this.redLightCountdown = Math.max(0, 3 - secondsPassed);
+}
+
+checkMovementViolations() {
+    if (this.name !== "!ZAIN" || !this.redLightActive || !this.redLightTarget) return;
+    
+    const target = this.redLightTarget;
+    const currentX = target.x;
+    const currentY = target.y;
+    
+    // Проверяем движение по X и Y осям
+    const deltaX = Math.abs(currentX - this.lastPosition.x);
+    const deltaY = Math.abs(currentY - this.lastPosition.y);
+    const totalMovement = deltaX + deltaY;
+    
+    // Если цель двигается больше чем на 2 пикселя за кадр = нарушение
+    if (totalMovement > 2) {
+        this.movementViolations++;
+        
+        // Получаем урон из конфигурации
+        const characterConfig = CHARACTERS.find(char => char.name === this.name);
+        const damage = characterConfig ? characterConfig.movementDamage : 15;
+        
+        // Наносим урон за движение
+        if (target.takeDamage) {
+            target.takeDamage(damage);
+        }
+        
+        // Создаем предупреждающий эффект
+        this.createRedLightWarning(target.x + target.width/2, target.y);
+        
+        console.log(`🔴💥 ${target.name} двигался во время Red Light! Урон: ${damage} (Нарушение ${this.movementViolations})`);
+        
+        // Эффекты наказания
+        target.screenShake = Math.max(target.screenShake, 8);
+        target.velocityX *= 0.5; // Замедляем
+    }
+    
+    // Обновляем последнюю позицию
+    this.lastPosition.x = currentX;
+    this.lastPosition.y = currentY;
+}
+
+createRedLightWarning(x, y) {
+    if (!this.redLightWarnings) {
+        this.redLightWarnings = [];
+    }
+    
+    const warning = {
+        x: x,
+        y: y,
+        life: 30,
+        maxLife: 30,
+        size: 40,
+        alpha: 1
+    };
+    
+    this.redLightWarnings.push(warning);
+}
+
+updateRedLightWarnings() {
+    if (!this.redLightWarnings) return;
+    
+    for (let i = this.redLightWarnings.length - 1; i >= 0; i--) {
+        const warning = this.redLightWarnings[i];
+        
+        warning.life--;
+        warning.alpha = warning.life / warning.maxLife;
+        warning.size += 2; // Расширяется
+        
+        if (warning.life <= 0) {
+            this.redLightWarnings.splice(i, 1);
+        }
+    }
+}
+
+// 🦈 МЕТОД ОБНОВЛЕНИЯ АКУЛЬЕЙ АТАКИ
+updateSharkDash() {
+    if (this.name !== "Matt" || !this.isSharkDashing) return;
+    
+    this.sharkTimer--;
+    
+    switch (this.sharkPhase) {
+        case 'transform':
+            // Фаза превращения
+            if (this.sharkTimer <= 0) {
+                this.sharkPhase = 'dash';
+                this.sharkTimer = 60; // 20 кадров на рывок
+                
+                // Создаем мощные водяные эффекты
+                this.createWaterParticles(this.x + this.width/2, this.y + this.height/2, 20);
+                
+                console.log(`🦈 ${this.name} превратился в акулу и мчится к цели!`);
+            }
+            break;
+            
+        case 'dash':
+    // ПРОСТОЙ ПРЯМОЙ ПОЛЕТ
+    const characterConfig = CHARACTERS.find(char => char.name === this.name);
+    const sharkSpeed = characterConfig ? characterConfig.sharkSpeed : 25;
+    
+    // ЛЕТИМ ПРЯМО В НАПРАВЛЕНИИ, КУДА СМОТРИМ
+    if (this.facingRight) {
+        this.x += sharkSpeed;
+    } else {
+        this.x -= sharkSpeed;
+    }
+    
+    // Проверяем столкновение с противником ВО ВРЕМЯ ПОЛЕТА
+    if (this.sharkTarget) {
+        const deltaX = Math.abs((this.x + this.width/2) - (this.sharkTarget.x + this.sharkTarget.width/2));
+        const deltaY = Math.abs((this.y + this.height/2) - (this.sharkTarget.y + this.sharkTarget.height/2));
+        const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+        
+        if (distance <= 100) {
+            // ПОПАЛИ В ПРОТИВНИКА!
+            this.sharkPhase = 'bite';
+            this.sharkTimer = 15;
+            this.executeSharkBite();
+            console.log(`🦈 ${this.name} ВРЕЗАЛСЯ В ПРОТИВНИКА!`);
+            return;
+        }
+    }
+    
+    // Проверяем границы экрана или таймер
+    if (this.x < -50 || this.x > canvas.width + 50 || this.sharkTimer <= 0) {
+        this.sharkPhase = 'return';
+        this.sharkTimer = 15;
+        console.log(`🦈 ${this.name} возвращается!`);
+    }
+            
+            // Добавляем след акулы
+            this.sharkTrail.push({
+                x: this.x + this.width/2,
+                y: this.y + this.height/2,
+                life: 30,
+                size: 15 + Math.random() * 10
+            });
+            
+            // Ограничиваем длину следа
+            if (this.sharkTrail.length > 20) {
+                this.sharkTrail.shift();
+            }
+            
+            if (this.sharkTimer <= 0) {
+                this.sharkPhase = 'bite';
+                this.sharkTimer = 15; // 15 кадров на укус
+                
+                // Выполняем укус
+                this.executeSharkBite();
+                
+                console.log(`🦈 ${this.name} КУСАЕТ цель!`);
+            }
+            break;
+            
+        case 'bite':
+            // Фаза укуса
+            if (this.sharkTimer <= 0) {
+                this.sharkPhase = 'return';
+                this.sharkTimer = 15; // 15 кадров на возвращение
+                
+                console.log(`🦈 ${this.name} возвращается в нормальную форму!`);
+            }
+            break;
+            
+        case 'return':
+            // Фаза возвращения
+            const returnProgress = 1 - (this.sharkTimer / 15);
+            
+            // Возвращаемся к начальной позиции
+            this.x = this.sharkTargetX + (this.sharkStartX - this.sharkTargetX) * returnProgress;
+            this.y = this.sharkTargetY + (this.sharkStartY - this.sharkTargetY) * returnProgress;
+            
+            if (this.sharkTimer <= 0) {
+                // Завершаем атаку
+                this.isSharkDashing = false;
+                this.sharkPhase = 'none';
+                this.sharkTimer = 0;
+                this.sharkTarget = null;
+                this.sharkTrail = [];
+                
+                // Возвращаем нормальную позицию
+                this.x = this.sharkStartX;
+                this.y = this.sharkStartY;
+                
+                console.log(`🦈 ${this.name} завершает Shark Dash!`);
+            }
+            break;
+    }
+}
+
+// 🦈 МЕТОД ВЫПОЛНЕНИЯ УКУСА
+executeSharkBite() {
+    if (!this.sharkTarget) return;
+    
+    const target = this.sharkTarget;
+    const characterConfig = CHARACTERS.find(char => char.name === this.name);
+    
+    // Получаем параметры укуса
+    const biteDamage = characterConfig ? characterConfig.sharkDamage : 50;
+    const stunDuration = characterConfig ? characterConfig.stunDuration : 60;
+    
+    // УЛУЧШЕННАЯ ПРОВЕРКА ПОПАДАНИЯ - по обеим осям
+    const deltaX = Math.abs((this.x + this.width/2) - (target.x + target.width/2));
+    const deltaY = Math.abs((this.y + this.height/2) - (target.y + target.height/2));
+    const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+    
+    console.log(`🦈 Проверка укуса: расстояние ${distance.toFixed(1)}, нужно ≤150`);
+    
+    if (distance <= 150) { // УВЕЛИЧИЛИ радиус укуса
+        // Наносим урон
+        if (target.takeDamage) {
+            target.takeDamage(biteDamage);
+        }
+        
+        // Оглушаем цель
+        target.stunned = stunDuration;
+        
+        // Сильное отталкивание
+        const knockbackForce = 20;
+        target.knockback += (target.x > this.x) ? knockbackForce : -knockbackForce;
+        target.velocityY = Math.min(target.velocityY, -12); // Подбрасываем вверх
+        
+        // Эффекты экрана
+        target.screenShake = Math.max(target.screenShake, 15);
+        this.screenShake = Math.max(this.screenShake, 10);
+        this.biteEffect = 30;
+        
+        // Создаем мощные водяные эффекты
+        this.createWaterParticles(target.x + target.width/2, target.y + target.height/2, 30);
+        
+        console.log(`🦈💥 Shark Bite попал! Урон: ${biteDamage}, Оглушение: ${stunDuration} кадров`);
+        
+        return 'hit';
+    } else {
+        console.log(`🦈❌ Shark Bite промахнулся! Дистанция: ${distance}`);
+        return 'miss';
+    }
+}
+
+// 🦈 МЕТОД СОЗДАНИЯ ВОДЯНЫХ ЧАСТИЦ
+createWaterParticles(x, y, count) {
+    if (!this.waterParticles) {
+        this.waterParticles = [];
+    }
+    
+    for (let i = 0; i < count; i++) {
+        const angle = (i / count) * Math.PI * 2;
+        const speed = 3 + Math.random() * 6;
+        
+        const particle = {
+            x: x + (Math.random() - 0.5) * 30,
+            y: y + (Math.random() - 0.5) * 30,
+            velocityX: Math.cos(angle) * speed,
+            velocityY: Math.sin(angle) * speed - 2,
+            life: 40 + Math.random() * 30,
+            maxLife: 70,
+            size: 3 + Math.random() * 5
+        };
+        
+        this.waterParticles.push(particle);
+    }
+}
+
+// 🦈 МЕТОД ОБНОВЛЕНИЯ ВОДЯНЫХ ЧАСТИЦ
+updateWaterParticles() {
+    if (!this.waterParticles) return;
+    
+    for (let i = this.waterParticles.length - 1; i >= 0; i--) {
+        const particle = this.waterParticles[i];
+        
+        particle.x += particle.velocityX;
+        particle.y += particle.velocityY;
+        particle.velocityY += 0.2; // Гравитация
+        particle.life--;
+        
+        // Эффект волны - частицы двигаются волнообразно
+        particle.x += Math.sin(particle.life * 0.1) * 0.5;
+        
+        if (particle.life <= 0) {
+            this.waterParticles.splice(i, 1);
+        }
+    }
 }
     }
+    
     
 
 // ====== ОПРЕДЕЛЕНИЯ ПЕРСОНАЖЕЙ ======
@@ -3131,47 +4465,64 @@ class BotAI {
         this.decisionCounter = 0;
         this.actionCounter = 0;
         this.forceActionTimer = 0;
+           // 🔧 НОВЫЕ СВОЙСТВА ДЛЯ ЗАЩИТЫ ОТ ЗАЦИКЛИВАНИЯ
+    this.lastActionTime = 0;
+    this.operationCount = 0;
+    this.emergencyStop = false;
     }
     
     update() {
-        this.stateTimer++;
-        this.decisionCounter++;
-        this.actionCounter++;
-        this.forceActionTimer++;
-        
-        // Принудительное действие каждые 20 кадров
-        if (this.forceActionTimer >= 20) {
-            this.forceAction();
-            this.forceActionTimer = 0;
-        }
-        
-        // Уменьшаем задержки
-        if (this.actionDelay > 0) {
-            this.actionDelay--;
-            return;
-        }
-        
-        // Более частые решения
-        if (this.decisionCounter >= Math.max(15, this.reactionTime / 2)) {
+    let operationsThisFrame = 0;
+    const MAX_OPERATIONS_PER_FRAME = 5;
+    
+    this.stateTimer++;
+    this.decisionCounter++;
+    this.actionCounter++;
+    this.forceActionTimer++;
+    operationsThisFrame++;
+    
+    if (this.forceActionTimer >= 20 && operationsThisFrame < MAX_OPERATIONS_PER_FRAME) {
+        this.forceAction();
+        this.forceActionTimer = 0;
+        operationsThisFrame++;
+    }
+    
+    if (this.actionDelay > 0) {
+        this.actionDelay--;
+        return;
+    }
+    
+    if (this.decisionCounter >= Math.max(20, this.reactionTime) && operationsThisFrame < MAX_OPERATIONS_PER_FRAME) {
+        try {
             this.makeDecision();
             this.decisionCounter = 0;
+            operationsThisFrame++;
+        } catch (error) {
+            console.error('❌ Ошибка в makeDecision:', error);
+            this.decisionCounter = 0;
         }
-        
-        // Более частые действия
-        if (this.actionCounter >= Math.max(8, this.reactionTime / 4)) {
+    }
+    
+    if (this.actionCounter >= Math.max(15, this.reactionTime / 2) && operationsThisFrame < MAX_OPERATIONS_PER_FRAME) {
+        try {
             this.executeState();
             this.actionCounter = 0;
+            operationsThisFrame++;
+        } catch (error) {
+            console.error('❌ Ошибка в executeState:', error);
+            this.actionCounter = 0;
         }
-        
-        // Обновляем таймеры
-        this.updateTimers();
-        
-        // Анализируем паттерны игрока
-        this.analyzePlayerMovement();
-        
-        // Адаптивная агрессивность
-        this.updateAggressiveness();
     }
+    
+    if (operationsThisFrame >= MAX_OPERATIONS_PER_FRAME) {
+        console.log(`⚠️ ИИ достиг лимита операций: ${operationsThisFrame}/${MAX_OPERATIONS_PER_FRAME}`);
+        return;
+    }
+    
+    this.updateTimers();
+    this.analyzePlayerMovement();
+    this.updateAggressiveness();
+}
     
     forceAction() {
         // Принудительное действие если бот слишком пассивен
@@ -3457,6 +4808,80 @@ class BotAI {
         }
     }
     
+    // 🤼 НОВОЕ: POWER GRAPPLE для Burhan
+    if (this.bot.name === "Burhan" && this.bot.grappleCooldown === 0 && distance <= 100) {
+        let grappleChance = this.abilityChance || 0.4;
+        
+        if (Math.random() < grappleChance) {
+            if (this.bot.powerGrapple()) {
+                console.log(`🤖🤼 ${this.bot.name} использует Power Grapple! (Шанс: ${Math.round(grappleChance * 100)}%)`);
+                return;
+            }
+        }
+    }
+    // 🦈 НОВОЕ: SHARK DASH для Matt
+    if (this.bot.name === "Matt" && this.bot.sharkCooldown === 0 && distance <= 200) {
+        let sharkChance = this.abilityChance || 0.4;
+        
+        if (Math.random() < sharkChance) {
+            if (this.bot.sharkDash()) {
+                console.log(`🤖🦈 ${this.bot.name} использует Shark Dash! (Шанс: ${Math.round(sharkChance * 100)}%)`);
+                return;
+            }
+        }
+    }
+    
+    // 💡 НОВОЕ: POWER BOOST для Xealist
+    if (this.bot.name === "Xealist" && this.bot.powerCooldown === 0 && !this.bot.isPowered) {
+        let boostChance = this.abilityChance || 0.5; // Чуть выше шанс т.к. это усиление
+        
+        if (Math.random() < boostChance) {
+            if (this.bot.powerBoost()) {
+                console.log(`🤖💡 ${this.bot.name} использует Power Boost! (Шанс: ${Math.round(boostChance * 100)}%)`);
+                // Не прерываем атаку, просто активируем усиление
+            }
+        }
+    }
+    
+    // 5. КОНТРАТАКА (с учетом сложности)
+    
+    // 5. КОНТРАТАКА (с учетом сложности)
+    
+    // ⚡ НОВОЕ: LIGHTNING CALL для Heathcliff
+if (this.bot.name === "Heathcliff" && this.bot.lightningCooldown === 0 && distance > 80) {
+    let lightningChance = this.abilityChance || 0.4;
+    
+    if (Math.random() < lightningChance) {
+        if (this.bot.lightningCall()) {
+            console.log(`🤖⚡ ${this.bot.name} призывает молнию! (Шанс: ${Math.round(lightningChance * 100)}%)`);
+            return;
+        }
+    }
+}
+
+// 🔴 НОВОЕ: RED LIGHT GREEN LIGHT для !ZAIN
+if (this.bot.name === "!ZAIN" && this.bot.redLightCooldown === 0 && distance <= 400) {
+    let redLightChance = this.abilityChance || 0.4;
+    
+    if (Math.random() < redLightChance) {
+        if (this.bot.redLightGreenLight()) {
+            console.log(`🤖🔴 ${this.bot.name} использует Red Light Green Light! (Шанс: ${Math.round(redLightChance * 100)}%)`);
+            return;
+        }
+    }
+}
+    // 🔴 НОВОЕ: RED LIGHT GREEN LIGHT для !ZAIN
+if (this.bot.name === "!ZAIN" && this.bot.redLightCooldown === 0 && distance <= 400) {
+    let redLightChance = this.abilityChance || 0.4;
+    
+    if (Math.random() < redLightChance) {
+        if (this.bot.redLightGreenLight()) {
+            console.log(`🤖🔴 ${this.bot.name} использует Red Light Green Light! (Шанс: ${Math.round(redLightChance * 100)}%)`);
+            return;
+        }
+    }
+}
+
     // 5. КОНТРАТАКА (с учетом сложности)
     if (this.bot.canCounter > 0 && distance < 100) {
         let counterChance = this.counterMaster ? 0.9 : 0.6; // Мастер почти всегда контратакует
@@ -3767,6 +5192,55 @@ document.addEventListener('keydown', function(e) {
     } else {
         showKeyPress('Q - ТЕЛЕПОРТ НА КУЛДАУНЕ');
         console.log('❌ Electric Teleport на кулдауне');
+    }
+} else if (player.name === "Burhan") {
+    // 🤼 НОВОЕ ДЛЯ BURHAN:
+    const grappled = player.powerGrapple();
+    if (grappled) {
+        showKeyPress('Q - POWER GRAPPLE! 🤼💥');
+        console.log('🤼 Burhan активировал Power Grapple!');
+    } else {
+        showKeyPress('Q - БРОСОК НА КУЛДАУНЕ');
+        console.log('❌ Power Grapple на кулдауне');
+    }
+} else if (player.name === "Matt") {
+    const dashed = player.sharkDash();
+    if (dashed) {
+        showKeyPress('Q - SHARK DASH! 🦈💥');
+        console.log('🦈 Matt активировал Shark Dash!');
+    } else {
+        showKeyPress('Q - АКУЛА НА КУЛДАУНЕ');
+        console.log('❌ Shark Dash на кулдауне');
+    }
+} else if (player.name === "Xealist") {
+    // 💡 НОВОЕ ДЛЯ XEALIST:
+    const boosted = player.powerBoost();
+    if (boosted) {
+        showKeyPress('Q - POWER BOOST! 💡⚡');
+        console.log('💡 Xealist активировал Power Boost!');
+    } else {
+        showKeyPress('Q - УСИЛЕНИЕ НА КУЛДАУНЕ');
+        console.log('❌ Power Boost на кулдауне');
+    }
+} else if (player.name === "Heathcliff") {
+    // ⚡ НОВОЕ ДЛЯ HEATHCLIFF:
+    const lightningUsed = player.lightningCall();
+    if (lightningUsed) {
+        showKeyPress('Q - LIGHTNING CALL! ⚡💥');
+        console.log('⚡ Heathcliff призывает молнию с небес!');
+    } else {
+        showKeyPress('Q - МОЛНИЯ НА КУЛДАУНЕ');
+        console.log('❌ Lightning Call на кулдауне');
+    }
+} else if (player.name === "!ZAIN") {
+    // 🔴 НОВОЕ ДЛЯ !ZAIN:
+    const redLightUsed = player.redLightGreenLight();
+    if (redLightUsed) {
+        showKeyPress('Q - RED LIGHT GREEN LIGHT! 🔴💥');
+        console.log('🔴 !ZAIN активировал Red Light Green Light!');
+    } else {
+        showKeyPress('Q - RED LIGHT НА КУЛДАУНЕ');
+        console.log('❌ Red Light Green Light на кулдауне');
     }
 } else {
     showKeyPress('Q - НЕТ СПОСОБНОСТИ');
@@ -4293,30 +5767,13 @@ function testMove(direction) {
 
 document.body.setAttribute('tabindex', '0');
 function cleanupGameTimers() {
-    // Очищаем таймеры игрока
+    // Очищаем массивы частиц
     if (player) {
-        if (player.waveTimers) {
-            player.waveTimers.forEach(timer => clearTimeout(timer));
-            player.waveTimers = null;
-        }
-        if (player.abilityEndTimer) {
-            clearTimeout(player.abilityEndTimer);
-            player.abilityEndTimer = null;
-        }
         player.magnitudeWaves = [];
         player.hitParticles = [];
     }
     
-    // Очищаем таймеры бота
     if (bot) {
-        if (bot.waveTimers) {
-            bot.waveTimers.forEach(timer => clearTimeout(timer));
-            bot.waveTimers = null;
-        }
-        if (bot.abilityEndTimer) {
-            clearTimeout(bot.abilityEndTimer);
-            bot.abilityEndTimer = null;
-        }
         bot.magnitudeWaves = [];
         bot.hitParticles = [];
     }
