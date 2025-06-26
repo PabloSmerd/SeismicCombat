@@ -34,6 +34,9 @@ body {
     background-clip: padding-box;
     padding: 15px;
     border-radius: 25px;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.5s ease, visibility 0.5s ease;
     box-shadow: 
         0 40px 80px rgba(0, 0, 0, 0.9),
         0 0 120px rgba(102, 126, 234, 0.5),
@@ -676,8 +679,6 @@ canvas:hover {
     50% { transform: translateY(-5px); }
 }
 
-
-
 /* === АДАПТИВНОСТЬ === */
 @media (max-height: 800px) {
     .character-card {
@@ -784,8 +785,7 @@ canvas:hover {
         height: 50vh;
     }
     
-    .game-container {
-        width: 100vw;
+    .game-container { width: 100vw;
         height: 100vh;
         padding: 10px;
         border-radius: 0;
@@ -897,16 +897,6 @@ button:focus {
     will-change: transform, box-shadow;
 }
 
-/* Анимации загрузки */
-@keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.5; }
-}
-
-.loading {
-    animation: pulse 2s ease-in-out infinite;
-}
-
 /* Состояния ошибок */
 .error {
     color: #E74C3C;
@@ -976,4 +966,41 @@ h1, h2, h3, h4, h5, h6 {
         transition-duration: 0.01ms !important;
         scroll-behavior: auto !important;
     }
+}
+
+/* === АНИМАЦИИ ДЛЯ ЭКРАНА ЗАГРУЗКИ === */
+@keyframes pulse {
+    0%, 100% { 
+        transform: scale(1);
+        opacity: 1;
+    }
+    50% { 
+        transform: scale(1.05);
+        opacity: 0.8;
+    }
+}
+
+@keyframes loadingFade {
+    from { 
+        opacity: 1;
+        transform: scale(1);
+    }
+    to { 
+        opacity: 0;
+        transform: scale(0.95);
+    }
+}
+
+#loadingScreen {
+    animation: none;
+}
+
+#loadingScreen.fade-out {
+    animation: loadingFade 0.8s ease-out forwards;
+}
+
+/* Показываем игру после загрузки */
+.game-container.loaded {
+    opacity: 1;
+    visibility: visible;
 }
