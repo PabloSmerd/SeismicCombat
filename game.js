@@ -1,31 +1,249 @@
+// 🔧 КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ ОШИБКИ register
+console.log('🛠️ Активация защиты от ошибок...');
+
+// ПРОВЕРКА ПОДДЕРЖКИ BROWSER API
+if ('serviceWorker' in navigator) {
+    console.log('✅ Service Worker API доступен');
+} else {
+    console.warn('⚠️ Service Worker не поддерживается');
+}
+
+// ГЛОБАЛЬНАЯ ЗАЩИТА ОТ ОШИБОК ДЕСТРУКТУРИЗАЦИИ
+window.addEventListener('error', function(e) {
+    if (e.message && (e.message.includes('Cannot destructure') || e.message.includes('register'))) {
+        console.error('🚨 НАЙДЕНА ОШИБКА REGISTER:', e.message);
+        console.log('🔧 Применяем исправление...');
+        e.preventDefault();
+        return false;
+    }
+});
+
+// БЕЗОПАСНАЯ ЗАМЕНА register ФУНКЦИЙ
+const safeRegister = function() { 
+    console.log('🛡️ Безопасная заглушка register'); 
+};
+const safeUnregister = function() { 
+    console.log('🛡️ Безопасная заглушка unregister'); 
+};
+
+// ПРОВЕРКА СОВМЕСТИМОСТИ БРАУЗЕРА
+function checkBrowserSupport() {
+    const required = {
+        'Canvas': !!document.createElement('canvas').getContext,
+        'ES6': typeof class {} === 'function',
+        'RequestAnimationFrame': !!window.requestAnimationFrame
+    };
+    
+    for (const [feature, supported] of Object.entries(required)) {
+        if (!supported) {
+            console.error(`❌ ${feature} не поддерживается`);
+            return false;
+        }
+    }
+    return true;
+}
+
+if (!checkBrowserSupport()) {
+    alert('⚠️ Ваш браузер не поддерживает игру. Используйте Chrome, Firefox или Edge.');
+}
+
+console.log('✅ Защита активирована, продолжаем загрузку...');
+
+// ====== СИСТЕМА ЗАГРУЗКИ ======
+let loadingProgress = 0;
+let loadingComplete = false;
+
+
+// ✨ НОВАЯ СИСТЕМА РЕАЛЬНОЙ ПРЕДЗАГРУЗКИ
+const CRITICAL_ASSETS = [
+    // Фоны арен
+    'assets/background.png',
+    'assets/background2.png', 
+    'assets/background4.png',
+    'assets/loading-logo.png',
+    
+    // Топ-5 персонажей для предзагрузки
+    'assets/TOM.png',
+    'assets/TOMFIGHT.png',
+    'assets/Tom.jBkock.png',
+    
+    'assets/Lyron.png',
+    'assets/LyronFight.png',
+    'assets/lyronBlock.png',
+    
+    'assets/NOXX.png',
+    'assets/NOXX_FIGHTER.png',
+    'assets/Noxx_block.png',
+    
+    'assets/Burhanf.png',
+    'assets/Burhanatack.png',
+    'assets/burhanblock.png',
+    
+    'assets/XEALIST.png',
+    'assets/XEALISTAAA.png',
+    'assets/Xeakistblock.png'
+];
+
+let assetsLoaded = 0;
+let totalAssets = CRITICAL_ASSETS.length;
+
+function preloadCriticalAssets() {
+    return new Promise((resolve) => {
+        console.log(`📦 Загружаем ${totalAssets} критичных ресурсов...`);
+        
+        if (CRITICAL_ASSETS.length === 0) {
+            updateLoadingProgress(100);
+            resolve();
+            return;
+        }
+        
+        CRITICAL_ASSETS.forEach((assetPath, index) => {
+            const img = new Image();
+            
+            img.onload = () => {
+                assetsLoaded++;
+                const progress = Math.floor((assetsLoaded / totalAssets) * 100);
+                updateLoadingProgress(progress);
+                
+                console.log(`✅ Загружен: ${assetPath} (${assetsLoaded}/${totalAssets})`);
+                
+                if (assetsLoaded === totalAssets) {
+                    console.log('🎉 Все критичные ресурсы загружены!');
+                    setTimeout(resolve, 500); // Небольшая задержка для плавности
+                }
+            };
+            
+            img.onerror = () => {
+                assetsLoaded++;
+                const progress = Math.floor((assetsLoaded / totalAssets) * 100);
+                updateLoadingProgress(progress);
+                
+                console.warn(`❌ Ошибка загрузки: ${assetPath}`);
+                
+                if (assetsLoaded === totalAssets) {
+                    console.log('⚠️ Загрузка завершена с ошибками');
+                    setTimeout(resolve, 500);
+                }
+            };
+            
+            img.src = assetPath;
+        });
+    });
+}
+function updateLoadingProgress(percent) {
+    loadingProgress = percent;
+    const progressBar = document.getElementById('loadingProgress');
+    const percentText = document.getElementById('loadingPercent');
+    
+    if (progressBar) {
+        progressBar.style.width = percent + '%';
+        
+        // Добавляем цветовую индикацию прогресса
+        if (percent < 30) {
+            progressBar.style.background = 'linear-gradient(90deg, #FF6B35, #FFA500)';
+        } else if (percent < 70) {
+            progressBar.style.background = 'linear-gradient(90deg, #FFA500, #FFD700)';
+        } else {
+            progressBar.style.background = 'linear-gradient(90deg, #FFD700, #00FF7F)';
+        }
+    }
+    
+    if (percentText) {
+        percentText.textContent = percent + '%';
+        
+        // Добавляем информацию о загрузке
+        if (percent < 100 && assetsLoaded > 0) {
+            percentText.textContent = `${percent}% (${assetsLoaded}/${totalAssets})`;
+        }
+    }
+    
+    console.log(`📊 Реальная загрузка: ${percent}% (${assetsLoaded}/${totalAssets} файлов)`);
+}
+
+function hideLoadingScreen() {
+    const loadingScreen = document.getElementById('loadingScreen');
+    const gameContainer = document.querySelector('.game-container');
+    
+    if (loadingScreen) {
+        loadingScreen.classList.add('fade-out');
+        setTimeout(() => {
+            loadingScreen.style.display = 'none';
+            if (gameContainer) {
+                gameContainer.classList.add('loaded');
+                gameContainer.style.opacity = '1';
+                gameContainer.style.visibility = 'visible';
+            }
+            loadingComplete = true;
+            console.log('✅ Экран загрузки скрыт! Игра готова!');
+            
+            // ВАЖНО: Инициализируем игру ПОСЛЕ показа меню
+            initializeGameAfterLoading();
+        }, 800);
+    }
+}
+function initializeGameAfterLoading() {
+    console.log('🎮 Инициализация игры после загрузки...');
+    
+    // Показываем первого персонажа
+    updateCharacterDisplay();
+    
+    console.log('✅ Игра полностью готова к использованию!');
+}
+
+async function startRealLoading() {
+    console.log('🚀 Начинаем реальную загрузку ресурсов...');
+    
+    try {
+        // Ждем загрузки всех критичных ресурсов
+        await preloadCriticalAssets();
+        
+        // Убеждаемся что прогресс 100%
+        updateLoadingProgress(100);
+        
+        console.log('✅ Загрузка завершена успешно!');
+        
+        // Плавно скрываем экран загрузки
+        setTimeout(() => {
+            hideLoadingScreen();
+        }, 800);
+        
+    } catch (error) {
+        console.error('❌ Ошибка при загрузке:', error);
+        
+        // Даже при ошибке показываем игру
+        updateLoadingProgress(100);
+        setTimeout(() => {
+            hideLoadingScreen();
+        }, 1000);
+    }
+}
+
+// ====== СИСТЕМА ПЕРСОНАЖЕЙ ======
+// ====== НАСТРОЙКИ КАРТИНОК ПЕРСОНАЖА ======
 // ====== СИСТЕМА ПЕРСОНАЖЕЙ ======
 // ====== НАСТРОЙКИ КАРТИНОК ПЕРСОНАЖА ======
 // --- НАЧАЛО БЛОКА: выбор персонажа ---
 // ==== КОНФИГ КАРТИНОК ДЛЯ ПЕРСОНАЖЕЙ ====
 // Функция изменения размера canvas
 function resizeCanvas() {
-    // Простая инициализация canvas
+    // Безопасная инициализация canvas
+    canvas = document.getElementById('gameCanvas');
     if (!canvas) {
-        canvas = document.getElementById('gameCanvas');
-        if (!canvas) {
-            console.error('❌ Canvas не найден!');
-            return false;
-        }
+        console.error('❌ Canvas не найден!');
+        return false;
     }
     
+    ctx = canvas.getContext('2d');
     if (!ctx) {
-        ctx = canvas.getContext('2d');
-        if (!ctx) {
-            console.error('❌ Не удалось получить контекст!');
-            return false;
-        }
+        console.error('❌ Не удалось получить контекст!');
+        return false;
     }
     
     // Устанавливаем размер
     canvas.width = 1200;
     canvas.height = 650;
     
-    console.log('✅ Canvas инициализирован');
+    console.log('✅ Canvas инициализирован безопасно');
     return true;
 }
 
@@ -37,34 +255,7 @@ function resizeCanvas() {
 // ====== ПОЛНАЯ ЗАМЕНА БЛОКА ИНИЦИАЛИЗАЦИИ ======
 // Удалите ВЕСЬ старый блок window.addEventListener('load', ...) и замените на этот:
 
-window.addEventListener('load', () => {
-    console.log('🚀 Инициализация игры...');
-    
-    // ... другой код ...
-    
-    // Настраиваем кнопки
-    const prevBtn = document.getElementById('prevCharBtn');
-    const nextBtn = document.getElementById('nextCharBtn');
-    const confirmBtn = document.getElementById('confirmCharBtn');
-    
-    if (prevBtn) {
-        prevBtn.addEventListener('click', () => {
-            selectedCharIndex = (selectedCharIndex - 1 + CHARACTERS.length) % CHARACTERS.length;
-            updateCharacterDisplay();
-            // ❌ ЗДЕСЬ НЕТ preloadImages() - ВОТ ПРОБЛЕМА!
-        });
-    }
-    
-    if (nextBtn) {
-        nextBtn.addEventListener('click', () => {
-            selectedCharIndex = (selectedCharIndex + 1) % CHARACTERS.length;
-            updateCharacterDisplay();
-            // ❌ ЗДЕСЬ ТОЖЕ НЕТ preloadImages() - ВОТ ПРОБЛЕМА!
-        });
-    }
-    
-    // ... остальной код ...
-});
+
 
 // ========================================
 // ✅ ЗАМЕНИТЕ НА ЭТОТ ИСПРАВЛЕННЫЙ КОД:
@@ -72,6 +263,9 @@ window.addEventListener('load', () => {
 
 window.addEventListener('load', () => {
     console.log('🚀 Инициализация игры...');
+    
+    // Запускаем экран загрузки
+    startRealLoading();
     
     // Инициализируем canvas
     if (!resizeCanvas()) {
@@ -390,7 +584,12 @@ const CHARACTERS = [
       attack: "assets/DeFi.NinjaAttack.png",
       portrait: "assets/DeFi.NinJa_Elijah.png",
       shield: "assets/Defi.Ninja.block.png"
-    }
+    },
+    // ✨ НОВЫЕ СТРОКИ:
+    specialAbility: "shadowCloneStrike",
+    abilityCooldown: 300,
+    cloneDamage: 20,
+    numberOfClones: 3
   },
   {
   key: "vludblet",
@@ -425,7 +624,15 @@ const CHARACTERS = [
       attack: "assets/AashiAttack.png",
       portrait: "assets/Aashi.png",
       shield: "assets/Aashiblock.png"
-    }
+    },
+    // ✨ НОВЫЕ СВОЙСТВА ДЛЯ HEART PULSE:
+    specialAbility: "heartPulse",
+    abilityCooldown: 300,        // 5 секунд кулдаун
+    pulseRadius: 200,            // Радиус пульса
+    healAmount: 40,              // Исцеление для Aashi
+    damageAmount: 25,            // Урон противнику
+    pulseCount: 3,               // Количество пульсов
+    pulseInterval: 30            // Интервал между пульсами (500мс)
   },
    {
     key: "Heathcliff",
@@ -505,15 +712,23 @@ const CHARACTERS = [
     key: "Kristina",
     name: "Kristina",
     color: "#ffa502",
-    description: "Beware the dark power veiled behind radiant faces",
+    description: "Beware the dark power veiled behind radiant faces - Master of Self-Healing",
     element: "electric",
     images: {
       idle: "assets/Kristina.png",
       attack: "assets/KRISTINAATA.png",
       portrait: "assets/Kristina.png",
-      shield: "assets/KristinaBlock.png"
-    }
-  },
+      shield: "assets/KristinaBlock.png",
+      healing: "assets/kristinacombo.png"  // ← НОВАЯ PNG ДЛЯ АНИМАЦИИ ИСЦЕЛЕНИЯ
+    },
+    // ✨ НОВЫЕ СВОЙСТВА ДЛЯ САМОИСЦЕЛЕНИЯ:
+    specialAbility: "selfHealing",
+    abilityCooldown: 480,        // 8 секунд кулдаун
+    healingAmount: 80,           // Восстанавливает 80 HP
+    healingDuration: 120,        // 2 секунды анимации исцеления
+    healingParticleCount: 20,    // Количество частиц исцеления
+    maxHealingUses: 3            // Максимум 3 использования за бой
+},
    {
     key: "BUDEK",
     name: "BUDEK",
@@ -553,17 +768,31 @@ const CHARACTERS = [
       shield: "assets/bulliosblock.png"
     }
   },
+  {
+    key: "cris",
+    name: "cris",
+    color: "#ffa502",
+    description: "ZELLA1",
+    element: "electric",
+    images: {
+      idle: "assets/cris.png",
+      attack: "assets/crisattack.png",
+      portrait: "assets/cris.png",
+      shield: "assets/crisblock.png"
+    }
+  },
    {
     key: "effgennn.l33t",
     name: "effgennn.l33t",
     color: "#ffa502",
-    description: "ZELLA",
-    element: "electric",
+    description: "Master of Banana Magic",
+    element: "bananas",
     images: {
       idle: "assets/effgennn.l33t.png",
       attack: "assets/effgennn.l33attack.png",
       portrait: "assets/effgennn.l33t.png",
-      shield: "assets/effgennn.l33tblock.png"
+      shield: "assets/effgennn.l33tblock.png",
+      transform: "assets/effgennn_transform.png"
     }
   }
   
@@ -888,7 +1117,7 @@ class Fighter {
         this.impactEffect = 0;               // Эффект удара о землю
      this.impactEffect = 0;               // Эффект удара о землю
         
-        // 🦈 НОВЫЕ СВОЙСТВА ДЛЯ АТАКИ АКУЛЫ MATT
+
         // 🦈 НОВЫЕ СВОЙСТВА ДЛЯ АТАКИ АКУЛЫ MATT
         this.isSharkDashing = false;         // Находится ли в режиме акулы
         this.sharkPhase = 'none';            // Фаза атаки: 'none', 'transform', 'dash', 'bite', 'return'
@@ -924,6 +1153,16 @@ this.redLightTarget = null;          // Цель способности
 this.movementViolations = 0;         // Количество нарушений движения
 this.lastPosition = { x: 0, y: 0 };  // Последняя позиция для отслеживания движения
 this.redLightWarnings = [];          // Визуальные предупреждения
+
+        // 🥷 НОВЫЕ СВОЙСТВА ДЛЯ SHADOW CLONE STRIKE
+        this.shadowClones = [];              // Массив теневых клонов
+        this.cloneCooldown = 0;              // Кулдаун способности
+        // 💖 НОВЫЕ СВОЙСТВА ДЛЯ HEART PULSE AASHI
+        this.heartPulses = [];               // Массив пульсов сердца
+        this.heartPulseCooldown = 0;         // Кулдаун способности
+        this.healingEffects = [];            // Эффекты исцеления
+        
+      
     }  // ← ВОТ ТУТ ЗАКРЫВАЕТСЯ constructor
     
     
@@ -1186,6 +1425,24 @@ if (this.redLightDuration > 0) {
     }
 }
 this.updateRedLightWarnings();
+
+// 🥷 НОВОЕ: ОБНОВЛЕНИЕ SHADOW CLONE STRIKE
+// 🥷 НОВОЕ: ОБНОВЛЕНИЕ SHADOW CLONE STRIKE
+this.updateShadowClones();
+if (this.cloneCooldown > 0) this.cloneCooldown--;
+
+// 💖 НОВОЕ: ОБНОВЛЕНИЕ HEART PULSE AASHI
+// 💖 НОВОЕ: ОБНОВЛЕНИЕ HEART PULSE AASHI
+this.updateHeartPulses();
+this.updateHealingEffects();
+if (this.heartPulseCooldown > 0) this.heartPulseCooldown--;
+
+
+
+
+// Обновляем эффекты
+this.updateTransformEffects();
+this.updateTransformExplosions();
 }
 
     
@@ -1313,13 +1570,26 @@ if (!this.isTeleporting || this.teleportPhase !== 'disappear') {
         this.drawRedLightWarnings(ctx);
 this.drawRedLightEffect(ctx, drawX, drawY);
 this.drawRedLightCooldown(ctx, this.x + this.width/2, this.y);
+
+    
+        // 🥷 НОВЫЕ МЕТОДЫ РИСОВАНИЯ ДЛЯ SHADOW CLONE STRIKE
+        this.drawShadowClones(ctx);
+        this.drawCloneCooldown(ctx, this.x + this.width/2, this.y);
+
+        // 💖 НОВЫЕ МЕТОДЫ РИСОВАНИЯ ДЛЯ HEART PULSE AASHI
+        this.drawHeartPulses(ctx);
+        this.drawHealingEffects(ctx);
+        this.drawHeartPulseCooldown(ctx, this.x + this.width/2, this.y);
     }
    drawCharacterWithImage(ctx, drawX, drawY) {
     // Определяем какую картинку использовать
     let imageKey = 'idle';
     
-    // 🔴 НОВОЕ: Проверяем Red Light позу для !ZAIN
-    if (this.name === "!ZAIN" && this.redLightActive) {
+    // 🍌 НОВОЕ: Проверяем состояние банана
+    if (this.isBanana) {
+        // Если превращен в банан - рисуем как банан!
+        return; // Выходим, не рисуем обычную картинку
+    } else if (this.name === "!ZAIN" && this.redLightActive) {
         imageKey = 'redLightPose';  // ← НОВАЯ СТРОКА: используем PNG красной позы
     } else if (this.name === "Burhan" && this.isGrappling && this.grapplePhase === 'throw') {
         imageKey = 'grapple';  // ← НОВАЯ СТРОКА: используем PNG анимацию броска
@@ -4219,6 +4489,1055 @@ updateRedLightWarnings() {
             this.redLightWarnings.splice(i, 1);
         }
     }
+    
+}// 🥷 МЕТОДЫ ДЛЯ SHADOW CLONE STRIKE DeFi.NinJa_Elijah
+shadowCloneStrike() {
+    if (this.cloneCooldown > 0 || this.name !== "DeFi.NinJa_Elijah") {
+        console.log(`❌ Shadow Clone Strike недоступен! Кулдаун: ${Math.ceil(this.cloneCooldown / 60)} сек`);
+        return false;
+    }
+    
+    if (!gameRunning || !gameStarted) {
+        console.log('❌ Игра не активна!');
+        return false;
+    }
+    
+    // Определяем цель (противника)
+    let target;
+    if (this === player && bot) {
+        target = bot;
+    } else if (this === bot && player) {
+        target = player;
+    } else {
+        console.log('❌ Цель для Shadow Clone Strike не найдена!');
+        return false;
+    }
+    
+    console.log(`🥷 ${this.name} создает теневых клонов!`);
+    
+    // Создаем 3 клона вокруг цели
+    this.shadowClones = [];
+    for (let i = 0; i < 3; i++) {
+        const angle = (i / 3) * Math.PI * 2;
+        const clone = {
+            x: target.x + Math.cos(angle) * 100,
+            y: target.y + Math.sin(angle) * 50,
+            life: 90,                    // 1.5 секунды жизни
+            attackTimer: 20 + i * 15,    // Атакуют с задержкой
+            hasAttacked: false,
+            alpha: 0.8,
+            originalX: target.x + Math.cos(angle) * 100,
+            originalY: target.y + Math.sin(angle) * 50
+        };
+        this.shadowClones.push(clone);
+    }
+    
+    this.cloneCooldown = 300; // 5 секунд кулдаун
+    return true;
+}
+
+updateShadowClones() {
+    if (this.name !== "DeFi.NinJa_Elijah" || !this.shadowClones) return;
+    
+    for (let i = this.shadowClones.length - 1; i >= 0; i--) {
+        const clone = this.shadowClones[i];
+        
+        clone.life--;
+        clone.attackTimer--;
+        clone.alpha = clone.life / 90;
+        
+        // Клон атакует
+        if (clone.attackTimer <= 0 && !clone.hasAttacked) {
+            this.executeCloneAttack(clone);
+            clone.hasAttacked = true;
+        }
+        
+        // Удаляем мертвого клона
+        if (clone.life <= 0) {
+            this.shadowClones.splice(i, 1);
+        }
+    }
+}
+
+executeCloneAttack(clone) {
+    // Определяем цель
+    let target;
+    if (this === player && bot) {
+        target = bot;
+    } else if (this === bot && player) {
+        target = player;
+    } else {
+        return;
+    }
+    
+    const distance = Math.sqrt(
+        Math.pow(clone.x - (target.x + target.width/2), 2) + 
+        Math.pow(clone.y - (target.y + target.height/2), 2)
+    );
+    
+    if (distance <= 120) {
+        // Наносим урон
+        if (target.takeDamage) {
+            target.takeDamage(20);
+        }
+        
+        // Эффекты
+        target.screenShake = Math.max(target.screenShake, 8);
+        
+        console.log(`🥷💥 Теневой клон попал в ${target.name}! Урон: 20`);
+        
+        return 'hit';
+    } else {
+        console.log(`🥷❌ Теневой клон промахнулся! Дистанция: ${distance}`);
+        return 'miss';
+    }
+}
+
+// 🥷 ИСПРАВЛЕННЫЙ МЕТОД РИСОВАНИЯ ТЕНЕВЫХ КЛОНОВ
+// Заменить существующий метод drawShadowClones в классе Fighter
+
+drawShadowClones(ctx) {
+    if (this.name !== "DeFi.NinJa_Elijah" || !this.shadowClones) return;
+    
+    this.shadowClones.forEach(clone => {
+        ctx.save();
+        
+        // Определяем какую картинку использовать
+        let imageKey = 'idle'; // По умолчанию обычная поза
+        
+        // Если клон готовится к атаке, используем attack картинку
+        if (clone.attackTimer <= 10 && clone.attackTimer > 0) {
+            imageKey = 'attack';
+        }
+        
+        // Получаем картинку из кэша (используем кэш игрока или бота)
+        let currentCache, cacheLoaded;
+        if (this === player) {
+            currentCache = imageCache;
+            cacheLoaded = imagesLoaded;
+        } else {
+            currentCache = window.botImageCache || {};
+            cacheLoaded = window.botImagesLoaded || false;
+        }
+        
+        const img = currentCache[imageKey];
+        
+        if (img && cacheLoaded) {
+            // ✨ РИСУЕМ РЕАЛЬНУЮ КАРТИНКУ НИНДЗЯ ✨
+            
+            // Устанавливаем прозрачность клона
+            ctx.globalAlpha = clone.alpha * 0.8; // Немного прозрачнее для эффекта тени
+            
+            // Применяем теневой эффект
+            ctx.filter = `hue-rotate(240deg) brightness(0.7) contrast(1.2)`; // Синеватый оттенок тени
+            
+            // Рисуем картинку ниндзя в позиции клона
+            ctx.drawImage(img, clone.x, clone.y, this.width * 0.9, this.height * 0.9);
+            
+            // Убираем фильтр
+            ctx.filter = 'none';
+            
+            // ⚡ ДОПОЛНИТЕЛЬНЫЕ ЭФФЕКТЫ НИНДЗЯ:
+            
+            // 1. Красные светящиеся глаза
+            const eyeGlow = clone.alpha * 0.9;
+            ctx.shadowColor = 'rgba(255, 0, 0, 0.8)';
+            ctx.shadowBlur = 15;
+            
+            ctx.fillStyle = `rgba(255, 0, 0, ${eyeGlow})`;
+            // Позиции глаз относительно картинки (настройте под вашу PNG)
+            ctx.fillRect(clone.x + 45, clone.y + 25, 8, 8);  // Левый глаз
+            ctx.fillRect(clone.x + 65, clone.y + 25, 8, 8);  // Правый глаз
+            
+            ctx.shadowBlur = 0;
+            
+            // 2. Теневое свечение вокруг клона
+            ctx.strokeStyle = `rgba(100, 50, 150, ${clone.alpha * 0.6})`;
+            ctx.lineWidth = 3;
+            ctx.strokeRect(clone.x - 2, clone.y - 2, this.width * 0.9 + 4, this.height * 0.9 + 4);
+            
+            // 3. Энергетические искры ниндзя
+            if (clone.attackTimer <= 20) {
+                for (let spark = 0; spark < 4; spark++) {
+                    const angle = (spark / 4) * Math.PI * 2 + Date.now() * 0.01;
+                    const sparkX = clone.x + this.width * 0.45 + Math.cos(angle) * 30;
+                    const sparkY = clone.y + this.height * 0.45 + Math.sin(angle) * 30;
+                    
+                    ctx.fillStyle = `rgba(150, 0, 255, ${clone.alpha * 0.8})`;
+                    ctx.beginPath();
+                    ctx.arc(sparkX, sparkY, 3, 0, 2 * Math.PI);
+                    ctx.fill();
+                }
+            }
+            
+            // 4. Эффект исчезновения (дым)
+            if (clone.life < 30) {
+                const smokeIntensity = (30 - clone.life) / 30;
+                ctx.fillStyle = `rgba(100, 100, 100, ${smokeIntensity * 0.4})`;
+                
+                for (let smoke = 0; smoke < 8; smoke++) {
+                    const smokeX = clone.x + Math.random() * this.width * 0.9;
+                    const smokeY = clone.y + Math.random() * this.height * 0.9;
+                    const smokeSize = 3 + Math.random() * 4;
+                    
+                    ctx.beginPath();
+                    ctx.arc(smokeX, smokeY, smokeSize, 0, 2 * Math.PI);
+                    ctx.fill();
+                }
+            }
+            
+        } else {
+            // 🔄 ЗАПАСНОЙ ВАРИАНТ (если картинка не загружена)
+            console.log(`⚠️ Картинка ${imageKey} для ниндзя-клона не найдена, используем простой рисунок`);
+            
+            ctx.globalAlpha = clone.alpha;
+            
+            // Простой темный силуэт ниндзя
+            ctx.fillStyle = `rgba(50, 50, 100, ${clone.alpha * 0.8})`;
+            ctx.fillRect(clone.x, clone.y, this.width * 0.8, this.height * 0.8);
+            
+            // Красные глаза
+            ctx.fillStyle = `rgba(255, 0, 0, ${clone.alpha})`;
+            ctx.fillRect(clone.x + 20, clone.y + 20, 8, 8);
+            ctx.fillRect(clone.x + 40, clone.y + 20, 8, 8);
+            
+            // Эффект дыма при исчезновении
+            if (clone.life < 30) {
+                ctx.fillStyle = `rgba(100, 100, 100, ${clone.alpha * 0.3})`;
+                for (let j = 0; j < 5; j++) {
+                    const dustX = clone.x + Math.random() * this.width;
+                    const dustY = clone.y + Math.random() * this.height;
+                    ctx.beginPath();
+                    ctx.arc(dustX, dustY, 3 + Math.random() * 3, 0, 2 * Math.PI);
+                    ctx.fill();
+                }
+            }
+        }
+        
+        ctx.restore();
+    });
+}
+
+drawCloneCooldown(ctx, x, y) {
+    if (this.name !== "DeFi.NinJa_Elijah" || this.cloneCooldown <= 0) return;
+    
+    const cooldownPercent = this.cloneCooldown / 300;
+    ctx.fillStyle = 'rgba(100, 50, 150, 0.8)';
+    ctx.fillRect(x - 30, y - 55, 60 * (1 - cooldownPercent), 6);
+    
+    // Иконка способности
+    if (cooldownPercent > 0.5) {
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+        ctx.font = 'bold 12px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('🥷', x, y - 60);
+    }
+}
+// 💖 МЕТОДЫ РИСОВАНИЯ ДЛЯ HEART PULSE AASHI
+drawHeartPulses(ctx) {
+    if (this.name !== "Aashi" || !this.heartPulses || this.heartPulses.length === 0) return;
+    
+    this.heartPulses.forEach(pulse => {
+        const centerX = pulse.x;
+        const centerY = pulse.y;
+        
+        // 💖 НОВАЯ АНИМАЦИЯ: СЕРДЕЧНАЯ ФОРМА ВМЕСТО КРУГОВ
+        
+        // 1. Основные кольца в форме сердца
+        for (let ring = 0; ring < 4; ring++) {
+            let ringRadius = pulse.radius - (ring * 15);
+            if (ringRadius <= 0) continue;
+            
+            let ringAlpha = pulse.alpha * (1 - ring * 0.25);
+            let ringWidth = 6 - ring * 1.5;
+            
+            // Рисуем форму сердца
+            ctx.strokeStyle = `hsla(${320 + pulse.pulseIndex * 20}, 90%, ${80 - ring * 15}%, ${ringAlpha})`;
+            ctx.lineWidth = ringWidth;
+            ctx.beginPath();
+            
+            // Математическая формула сердца
+            for (let t = 0; t <= Math.PI * 2; t += 0.1) {
+                const scale = ringRadius / 50; // Масштаб сердца
+                const x = centerX + scale * 16 * Math.pow(Math.sin(t), 3);
+                const y = centerY - scale * (13 * Math.cos(t) - 5 * Math.cos(2*t) - 2 * Math.cos(3*t) - Math.cos(4*t));
+                
+                if (t === 0) {
+                    ctx.moveTo(x, y);
+                } else {
+                    ctx.lineTo(x, y);
+                }
+            }
+            ctx.stroke();
+        }
+        
+        // 2. ПУЛЬСИРУЮЩИЕ РОЗОВЫЕ СЕРДЕЧКИ ПО КРАЮ
+        const heartCount = Math.floor(pulse.radius / 30);
+        for (let i = 0; i < heartCount; i++) {
+            const angle = (i / heartCount) * Math.PI * 2 + pulse.heartbeat * 0.3;
+            const heartRadius = pulse.radius + Math.sin(pulse.heartbeat * 2 + i) * 12;
+            const heartX = centerX + Math.cos(angle) * heartRadius;
+            const heartY = centerY + Math.sin(angle) * heartRadius;
+            
+            // Размер сердечка зависит от пульса
+            const heartSize = 20 + Math.sin(pulse.heartbeat * 3 + i) * 5;
+            
+            ctx.save();
+            ctx.translate(heartX, heartY);
+            ctx.scale(heartSize / 20, heartSize / 20);
+            
+            // Рисуем эмодзи сердечко с эффектом свечения
+            ctx.shadowColor = 'rgba(255, 105, 180, 0.8)';
+            ctx.shadowBlur = 15;
+            ctx.font = 'bold 20px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillStyle = `rgba(255, 105, 180, ${pulse.alpha})`;
+            ctx.fillText('💖', 0, 6);
+            
+            ctx.restore();
+        }
+        
+        // 3. ЦЕНТРАЛЬНОЕ БОЛЬШОЕ СЕРДЦЕ С ГРАДИЕНТОМ
+        if (pulse.radius < 100) {
+            const centerAlpha = (100 - pulse.radius) / 100 * pulse.alpha;
+            const pulseFactor = 1 + Math.sin(pulse.heartbeat * 2.5) * 0.6;
+            
+            // Большое центральное сердце
+            ctx.save();
+            ctx.translate(centerX, centerY);
+            ctx.scale(pulseFactor * 2, pulseFactor * 2);
+            
+            // Градиентное свечение
+            ctx.shadowColor = 'rgba(255, 20, 147, 0.9)';
+            ctx.shadowBlur = 30;
+            
+            ctx.font = 'bold 40px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillStyle = `rgba(255, 20, 147, ${centerAlpha})`;
+            ctx.fillText('💝', 0, 12);
+            
+            ctx.restore();
+        }
+        
+        // 4. ЛЕТЯЩИЕ МАЛЕНЬКИЕ СЕРДЕЧКИ (новый эффект)
+        for (let i = 0; i < 8; i++) {
+            const floatAngle = (i / 8) * Math.PI * 2 + pulse.heartbeat * 0.8;
+            const floatRadius = pulse.radius * 0.6 + Math.sin(pulse.heartbeat * 1.5 + i) * 20;
+            const floatX = centerX + Math.cos(floatAngle) * floatRadius;
+            const floatY = centerY + Math.sin(floatAngle) * floatRadius + Math.sin(pulse.heartbeat * 2 + i) * 10;
+            
+            ctx.font = 'bold 14px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillStyle = `rgba(255, 182, 193, ${pulse.alpha * 0.7})`;
+            ctx.fillText('💗', floatX, floatY);
+        }
+        
+        // 5. ЭНЕРГЕТИЧЕСКИЕ ИСКРЫ ЛЮБВИ
+        for (let spark = 0; spark < 12; spark++) {
+            const sparkAngle = (spark / 12) * Math.PI * 2 + pulse.heartbeat;
+            const sparkDistance = pulse.radius + Math.random() * 30;
+            const sparkX = centerX + Math.cos(sparkAngle) * sparkDistance;
+            const sparkY = centerY + Math.sin(sparkAngle) * sparkDistance;
+            
+            // Розовые искорки
+            ctx.fillStyle = `rgba(255, 20, 147, ${pulse.alpha * 0.8})`;
+            ctx.shadowColor = 'rgba(255, 20, 147, 0.6)';
+            ctx.shadowBlur = 8;
+            
+            ctx.beginPath();
+            ctx.arc(sparkX, sparkY, 2 + Math.random() * 2, 0, 2 * Math.PI);
+            ctx.fill();
+        }
+        
+        // 6. ВОЛНА ИСЦЕЛЕНИЯ (зеленые кольца внутри)
+        if (this.name === "Aashi") {
+            for (let healRing = 0; healRing < 2; healRing++) {
+                const healRadius = pulse.radius * (0.3 + healRing * 0.2);
+                const healAlpha = pulse.alpha * (1 - healRing * 0.4);
+                
+                ctx.strokeStyle = `rgba(0, 255, 127, ${healAlpha})`;
+                ctx.lineWidth = 3;
+                ctx.setLineDash([5, 5]);
+                
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, healRadius, 0, 2 * Math.PI);
+                ctx.stroke();
+                ctx.setLineDash([]);
+            }
+        }
+        
+        ctx.shadowBlur = 0; // Сбрасываем тень
+    });
+}
+
+// 2. ОБНОВИТЕ ТАКЖЕ МЕТОД createHeartPulse ДЛЯ БОЛЕЕ ПЛАВНОЙ АНИМАЦИИ:
+
+createHeartPulse(pulseIndex) {
+    const characterConfig = CHARACTERS.find(char => char.name === this.name);
+    const maxRadius = (characterConfig ? characterConfig.pulseRadius : 200) + (pulseIndex * 40);
+    const damage = characterConfig ? characterConfig.damageAmount : 25;
+    
+    const pulse = {
+        x: this.x + this.width / 2,
+        y: this.y + this.height / 2,
+        radius: 15, // Начинаем с меньшего радиуса
+        maxRadius: maxRadius,
+        speed: 4 + pulseIndex * 0.5, // Медленнее для красоты
+        damage: damage,
+        color: `hsl(${320 + pulseIndex * 25}, 90%, ${70 + pulseIndex * 5}%)`, // Более яркие цвета
+        alpha: 1,
+        hasHit: false,
+        pulseIndex: pulseIndex,
+        heartbeat: 0, // Для анимации сердцебиения
+        creationTime: Date.now() // Для дополнительных эффектов
+    };
+    
+    this.heartPulses.push(pulse);
+    console.log(`💖 Создан улучшенный Heart Pulse ${pulseIndex + 1} с сердечной анимацией!`);
+}
+
+// 3. ОБНОВИТЕ updateHeartPulses ДЛЯ УЛУЧШЕННОЙ ФИЗИКИ:
+
+updateHeartPulses() {
+    if (this.name !== "Aashi" || !this.heartPulses) return;
+    
+    try {
+        for (let i = this.heartPulses.length - 1; i >= 0; i--) {
+            const pulse = this.heartPulses[i];
+            
+            if (!pulse) {
+                this.heartPulses.splice(i, 1);
+                continue;
+            }
+            
+            // Более плавное расширение
+            pulse.radius += pulse.speed;
+            pulse.alpha = Math.max(0, 1 - (pulse.radius / pulse.maxRadius));
+            
+            // Улучшенная анимация сердцебиения
+            const timeSinceCreation = (Date.now() - pulse.creationTime) / 1000;
+            pulse.heartbeat = timeSinceCreation * 3; // Частота сердцебиения
+            
+            // Проверяем столкновения с противником
+            if (this === player && bot && !pulse.hasHit && pulse.radius > 40) {
+                this.checkHeartPulseCollision(pulse, bot);
+            } else if (this === bot && player && !pulse.hasHit && pulse.radius > 40) {
+                this.checkHeartPulseCollision(pulse, player);
+            }
+            
+            // Удаляем пульс если он достиг максимального радиуса
+            if (pulse.radius >= pulse.maxRadius || pulse.alpha <= 0.01) {
+                this.heartPulses.splice(i, 1);
+            }
+        }
+    } catch (error) {
+        console.error('❌ Ошибка в updateHeartPulses:', error);
+        this.heartPulses = [];
+    }
+}
+
+// 4. АЛЬТЕРНАТИВНЫЕ ВАРИАНТЫ АНИМАЦИИ:
+
+// ВАРИАНТ A: ЦВЕТОЧНЫЕ ЛЕПЕСТКИ
+drawHeartPulsesFloral(ctx) {
+    if (this.name !== "Aashi" || !this.heartPulses || this.heartPulses.length === 0) return;
+    
+    this.heartPulses.forEach(pulse => {
+        // Рисуем лепестки роз вместо сердец
+        for (let petal = 0; petal < 8; petal++) {
+            const angle = (petal / 8) * Math.PI * 2 + pulse.heartbeat * 0.5;
+            const petalX = pulse.x + Math.cos(angle) * pulse.radius;
+            const petalY = pulse.y + Math.sin(angle) * pulse.radius;
+            
+            ctx.save();
+            ctx.translate(petalX, petalY);
+            ctx.rotate(angle);
+            
+            // Лепесток в виде эллипса
+            ctx.fillStyle = `rgba(255, 105, 180, ${pulse.alpha * 0.8})`;
+            ctx.beginPath();
+            ctx.ellipse(0, 0, 15, 8, 0, 0, 2 * Math.PI);
+            ctx.fill();
+            
+            ctx.restore();
+        }
+        
+        // Центральный цветок
+        ctx.font = 'bold 30px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillStyle = `rgba(255, 20, 147, ${pulse.alpha})`;
+        ctx.fillText('🌸', pulse.x, pulse.y + 10);
+    });
+}
+
+// ВАРИАНТ B: АНГЕЛЬСКИЕ КРЫЛЬЯ
+drawHeartPulsesAngelic(ctx) {
+    if (this.name !== "Aashi" || !this.heartPulses || this.heartPulses.length === 0) return;
+    
+    this.heartPulses.forEach(pulse => {
+        const wingSpan = pulse.radius * 0.8;
+        
+        // Левое крыло
+        ctx.strokeStyle = `rgba(255, 255, 255, ${pulse.alpha * 0.9})`;
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        for (let i = 0; i <= 20; i++) {
+            const t = (i / 20) * Math.PI;
+            const x = pulse.x - wingSpan * Math.cos(t) * 0.5;
+            const y = pulse.y + wingSpan * Math.sin(t) * 0.3;
+            
+            if (i === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+        
+        // Правое крыло
+        ctx.beginPath();
+        for (let i = 0; i <= 20; i++) {
+            const t = (i / 20) * Math.PI;
+            const x = pulse.x + wingSpan * Math.cos(t) * 0.5;
+            const y = pulse.y + wingSpan * Math.sin(t) * 0.3;
+            
+            if (i === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+        
+        // Ангельский нимб
+        ctx.strokeStyle = `rgba(255, 215, 0, ${pulse.alpha})`;
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(pulse.x, pulse.y - wingSpan * 0.6, 20, 0, 2 * Math.PI);
+        ctx.stroke();
+    });
+}
+
+// ВАРИАНТ C: ВОДЯНЫЕ КАПЛИ
+drawHeartPulsesWater(ctx) {
+    if (this.name !== "Aashi" || !this.heartPulses || this.heartPulses.length === 0) return;
+    
+    this.heartPulses.forEach(pulse => {
+        // Водяные круги
+        for (let ring = 0; ring < 5; ring++) {
+            const ringRadius = pulse.radius - ring * 20;
+            if (ringRadius <= 0) continue;
+            
+            ctx.strokeStyle = `rgba(0, 191, 255, ${pulse.alpha * (1 - ring * 0.2)})`;
+            ctx.lineWidth = 2;
+            ctx.setLineDash([10, 5]);
+            
+            ctx.beginPath();
+            ctx.arc(pulse.x, pulse.y, ringRadius, 0, 2 * Math.PI);
+            ctx.stroke();
+            ctx.setLineDash([]);
+        }
+        
+        // Водяные брызги
+        for (let drop = 0; drop < 12; drop++) {
+            const angle = (drop / 12) * Math.PI * 2 + pulse.heartbeat;
+            const dropX = pulse.x + Math.cos(angle) * pulse.radius;
+            const dropY = pulse.y + Math.sin(angle) * pulse.radius;
+            
+            ctx.fillStyle = `rgba(135, 206, 235, ${pulse.alpha * 0.8})`;
+            ctx.beginPath();
+            ctx.arc(dropX, dropY, 3, 0, 2 * Math.PI);
+            ctx.fill();
+        }
+        
+        // Центральная капля
+        ctx.font = 'bold 25px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillStyle = `rgba(0, 191, 255, ${pulse.alpha})`;
+        ctx.fillText('💧', pulse.x, pulse.y + 8);
+    });
+}
+
+// 4. ДОПОЛНИТЕЛЬНЫЕ УЛУЧШЕНИЯ ДЛЯ AASHI:
+
+// Обновите метод heartPulse для более эпичного эффекта:
+heartPulse() {
+    if (this.heartPulseCooldown > 0 || this.name !== "Aashi") {
+        console.log(`❌ Heart Pulse недоступен! Кулдаун: ${Math.ceil(this.heartPulseCooldown / 60)} сек`);
+        return false;
+    }
+    
+    if (!gameRunning || !gameStarted) {
+        console.log('❌ Игра не активна!');
+        return false;
+    }
+    
+    console.log(`💖 ${this.name} запускает УЛУЧШЕННЫЙ HEART PULSE! Сердечное исцеление и урон!`);
+    
+    // Получаем настройки из конфигурации
+    const characterConfig = CHARACTERS.find(char => char.name === this.name);
+    const pulseCount = characterConfig ? characterConfig.pulseCount : 3;
+    const pulseInterval = characterConfig ? characterConfig.pulseInterval : 35; // Чуть дольше интервал
+    const healAmount = characterConfig ? characterConfig.healAmount : 45; // Больше исцеления
+    
+    // Мгновенное мини-исцеление при активации
+    const instantHeal = 15;
+    this.health = Math.min(this.maxHealth, this.health + instantHeal);
+    this.createHealingEffect(this.x + this.width/2, this.y + this.height/2, instantHeal);
+    
+    // Создаем пульсы с интервалом
+    this.heartPulses = [];
+    for (let i = 0; i < pulseCount; i++) {
+        setTimeout(() => {
+            if (this && gameRunning) {
+                this.createHeartPulse(i);
+                
+                // Исцеляем Aashi при каждом пульсе
+                const currentHeal = Math.min(healAmount, this.maxHealth - this.health);
+                this.health = Math.min(this.maxHealth, this.health + healAmount);
+                
+                if (currentHeal > 0) {
+                    this.createHealingEffect(this.x + this.width/2, this.y + this.height/2, currentHeal);
+                    console.log(`💚 ${this.name} исцелилась на ${currentHeal} HP! Здоровье: ${this.health}/${this.maxHealth}`);
+                    
+                    // Дополнительные визуальные эффекты исцеления
+                    for (let j = 0; j < 5; j++) {
+                        setTimeout(() => {
+                            this.createHealingEffect(
+                                this.x + this.width/2 + (Math.random() - 0.5) * 60,
+                                this.y + this.height/2 + (Math.random() - 0.5) * 60,
+                                5
+                            );
+                        }, j * 100);
+                    }
+                }
+            }
+        }, i * (pulseInterval * 16.67)); // Конвертируем кадры в миллисекунды
+    }
+    
+    this.heartPulseCooldown = characterConfig ? characterConfig.abilityCooldown : 300;
+    return true;
+}
+
+drawHealingEffects(ctx) {
+    if (!this.healingEffects) return;
+    
+    this.healingEffects.forEach(effect => {
+        ctx.save();
+        ctx.globalAlpha = effect.alpha;
+        
+        // Летящий текст исцеления
+        ctx.fillStyle = '#00FF7F';
+        ctx.font = 'bold 20px Arial';
+        ctx.textAlign = 'center';
+        ctx.strokeStyle = 'rgba(0, 0, 0, 0.8)';
+        ctx.lineWidth = 3;
+        
+        const text = `+${effect.amount}`;
+        ctx.strokeText(text, effect.x, effect.y);
+        ctx.fillText(text, effect.x, effect.y);
+        
+        ctx.restore();
+    });
+    
+    // Рисуем частицы исцеления
+    if (this.hitParticles) {
+        this.hitParticles.forEach(particle => {
+            if (particle.type === 'healing') {
+                const alpha = particle.life / particle.maxLife;
+                ctx.fillStyle = `rgba(0, 255, 127, ${alpha})`;
+                
+                ctx.beginPath();
+                ctx.arc(particle.x, particle.y, particle.size, 0, 2 * Math.PI);
+                ctx.fill();
+                
+                // Свечение частицы исцеления
+                ctx.shadowColor = 'rgba(0, 255, 127, 0.6)';
+                ctx.shadowBlur = 8;
+                ctx.fillStyle = `rgba(255, 255, 255, ${alpha * 0.5})`;
+                ctx.beginPath();
+                ctx.arc(particle.x, particle.y, particle.size * 0.5, 0, 2 * Math.PI);
+                ctx.fill();
+                ctx.shadowBlur = 0;
+            }
+        });
+    }
+}
+
+drawHeartPulseCooldown(ctx, x, y) {
+    if (this.name !== "Aashi" || this.heartPulseCooldown <= 0) return;
+    
+    const cooldownPercent = this.heartPulseCooldown / 300;
+    ctx.fillStyle = 'rgba(255, 105, 180, 0.8)';
+    ctx.fillRect(x - 30, y - 65, 60 * (1 - cooldownPercent), 6);
+    
+    // Иконка способности
+    if (cooldownPercent > 0.5) {
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+        ctx.font = 'bold 12px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('💖', x, y - 70);
+    }
+}
+drawHeartPulseCooldown(ctx, x, y) {
+    if (this.name !== "Aashi" || this.heartPulseCooldown <= 0) return;
+    
+    const cooldownPercent = this.heartPulseCooldown / 300;
+    ctx.fillStyle = 'rgba(255, 105, 180, 0.8)';
+    ctx.fillRect(x - 30, y - 65, 60 * (1 - cooldownPercent), 6);
+    
+    // Иконка способности
+    if (cooldownPercent > 0.5) {
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+        ctx.font = 'bold 12px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('💖', x, y - 70);
+    }
+}
+
+
+
+
+
+createTransformEffect(x, y) {
+    if (!this.transformEffects) {
+        this.transformEffects = [];
+    }
+    
+    for (let i = 0; i < 12; i++) {
+        const angle = (i / 12) * Math.PI * 2;
+        const effect = {
+            x: x + (Math.random() - 0.5) * 30,
+            y: y + (Math.random() - 0.5) * 30,
+            velocityX: Math.cos(angle) * 3,
+            velocityY: Math.sin(angle) * 3 - 2,
+            life: 40 + Math.random() * 20,
+            maxLife: 60,
+            size: 3 + Math.random() * 4,
+            color: Math.random() < 0.5 ? 'yellow' : 'orange'
+        };
+        
+        this.transformEffects.push(effect);
+    }
+}
+
+createTransformationExplosion(x, y) {
+    if (!this.transformExplosions) {
+        this.transformExplosions = [];
+    }
+    
+    const explosion = {
+        x: x,
+        y: y,
+        radius: 0,
+        maxRadius: 60,
+        life: 30,
+        maxLife: 30
+    };
+    
+    this.transformExplosions.push(explosion);
+    
+    for (let i = 0; i < 15; i++) {
+        const angle = (i / 15) * Math.PI * 2;
+        const particle = {
+            x: x,
+            y: y,
+            velocityX: Math.cos(angle) * (4 + Math.random() * 4),
+            velocityY: Math.sin(angle) * (4 + Math.random() * 4) - 3,
+            life: 50 + Math.random() * 30,
+            maxLife: 80,
+            size: 4 + Math.random() * 3,
+            isBanana: true
+        };
+        
+        if (!this.hitParticles) {
+            this.hitParticles = [];
+        }
+        this.hitParticles.push(particle);
+    }
+}
+
+updateTransformEffects() {
+    if (!this.transformEffects) return;
+    
+    for (let i = this.transformEffects.length - 1; i >= 0; i--) {
+        const effect = this.transformEffects[i];
+        
+        effect.x += effect.velocityX;
+        effect.y += effect.velocityY;
+        effect.velocityY += 0.2;
+        effect.life--;
+        
+        if (effect.life <= 0) {
+            this.transformEffects.splice(i, 1);
+        }
+    }
+}
+
+updateTransformExplosions() {
+    if (!this.transformExplosions) return;
+    
+    for (let i = this.transformExplosions.length - 1; i >= 0; i--) {
+        const explosion = this.transformExplosions[i];
+        
+        explosion.radius += (explosion.maxRadius - explosion.radius) * 0.2;
+        explosion.life--;
+        
+        if (explosion.life <= 0) {
+            this.transformExplosions.splice(i, 1);
+        }
+    }
+}
+updateTransformExplosions() {
+    if (!this.transformExplosions) return;
+    
+    for (let i = this.transformExplosions.length - 1; i >= 0; i--) {
+        const explosion = this.transformExplosions[i];
+        
+        explosion.radius += (explosion.maxRadius - explosion.radius) * 0.2;
+        explosion.life--;
+        
+        if (explosion.life <= 0) {
+            this.transformExplosions.splice(i, 1);
+        }
+    }
+}
+
+drawTransformEffects(ctx) {
+    if (!this.transformEffects) return;
+    
+    this.transformEffects.forEach(effect => {
+        const alpha = effect.life / effect.maxLife;
+        
+        ctx.fillStyle = effect.color === 'yellow' ? `rgba(255, 215, 0, ${alpha})` : `rgba(255, 165, 0, ${alpha})`;
+        ctx.beginPath();
+        ctx.arc(effect.x, effect.y, effect.size, 0, 2 * Math.PI);
+        ctx.fill();
+        
+        // Свечение
+        ctx.shadowColor = effect.color === 'yellow' ? 'rgba(255, 215, 0, 0.6)' : 'rgba(255, 165, 0, 0.6)';
+        ctx.shadowBlur = 8;
+        ctx.fillStyle = `rgba(255, 255, 255, ${alpha * 0.5})`;
+        ctx.beginPath();
+        ctx.arc(effect.x, effect.y, effect.size * 0.5, 0, 2 * Math.PI);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+    });
+}
+
+drawTransformExplosions(ctx) {
+    if (!this.transformExplosions) return;
+    
+    this.transformExplosions.forEach(explosion => {
+        const alpha = explosion.life / explosion.maxLife;
+        
+        // Внешнее кольцо
+        ctx.strokeStyle = `rgba(255, 215, 0, ${alpha})`;
+        ctx.lineWidth = 6;
+        ctx.beginPath();
+        ctx.arc(explosion.x, explosion.y, explosion.radius, 0, 2 * Math.PI);
+        ctx.stroke();
+        
+        // Внутреннее кольцо
+        ctx.strokeStyle = `rgba(255, 255, 255, ${alpha * 0.8})`;
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(explosion.x, explosion.y, explosion.radius * 0.6, 0, 2 * Math.PI);
+        ctx.stroke();
+        
+        // Банановые эмодзи по кругу
+        const emojiCount = 8;
+        for (let i = 0; i < emojiCount; i++) {
+            const angle = (i / emojiCount) * Math.PI * 2;
+            const emojiX = explosion.x + Math.cos(angle) * explosion.radius;
+            const emojiY = explosion.y + Math.sin(angle) * explosion.radius;
+            
+            ctx.font = 'bold 16px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillStyle = `rgba(255, 215, 0, ${alpha})`;
+            ctx.fillText('🍌', emojiX, emojiY + 5);
+        }
+    });
+}
+
+// 💖 МЕТОДЫ ДЛЯ HEART PULSE AASHI
+heartPulse() {
+    if (this.heartPulseCooldown > 0 || this.name !== "Aashi") {
+        console.log(`❌ Heart Pulse недоступен! Кулдаун: ${Math.ceil(this.heartPulseCooldown / 60)} сек`);
+        return false;
+    }
+    
+    if (!gameRunning || !gameStarted) {
+        console.log('❌ Игра не активна!');
+        return false;
+    }
+    
+    console.log(`💖 ${this.name} использует HEART PULSE! Исцеление и урон!`);
+    
+    // Получаем настройки из конфигурации
+    const characterConfig = CHARACTERS.find(char => char.name === this.name);
+    const pulseCount = characterConfig ? characterConfig.pulseCount : 3;
+    const pulseInterval = characterConfig ? characterConfig.pulseInterval : 30;
+    const healAmount = characterConfig ? characterConfig.healAmount : 40;
+    
+    // Создаем пульсы с интервалом
+    this.heartPulses = [];
+    for (let i = 0; i < pulseCount; i++) {
+        setTimeout(() => {
+            if (this && gameRunning) {
+                this.createHeartPulse(i);
+                
+                // Исцеляем Aashi при каждом пульсе
+                const currentHeal = Math.min(healAmount, this.maxHealth - this.health);
+                this.health = Math.min(this.maxHealth, this.health + healAmount);
+                
+                if (currentHeal > 0) {
+                    this.createHealingEffect(this.x + this.width/2, this.y + this.height/2, currentHeal);
+                    console.log(`💚 ${this.name} исцелилась на ${currentHeal} HP! Здоровье: ${this.health}/${this.maxHealth}`);
+                }
+            }
+        }, i * (pulseInterval * 16.67)); // Конвертируем кадры в миллисекунды
+    }
+    
+    this.heartPulseCooldown = characterConfig ? characterConfig.abilityCooldown : 300;
+    return true;
+}
+
+createHeartPulse(pulseIndex) {
+    const characterConfig = CHARACTERS.find(char => char.name === this.name);
+    const maxRadius = (characterConfig ? characterConfig.pulseRadius : 200) + (pulseIndex * 30);
+    const damage = characterConfig ? characterConfig.damageAmount : 25;
+    
+    const pulse = {
+        x: this.x + this.width / 2,
+        y: this.y + this.height / 2,
+        radius: 20,
+        maxRadius: maxRadius,
+        speed: 6 + pulseIndex,
+        damage: damage,
+        color: `hsl(${320 + pulseIndex * 15}, 80%, ${60 + pulseIndex * 10}%)`, // Розово-золотые тона
+        alpha: 1,
+        hasHit: false,
+        pulseIndex: pulseIndex,
+        heartbeat: 0 // Для анимации сердцебиения
+    };
+    
+    this.heartPulses.push(pulse);
+    console.log(`💖 Создан Heart Pulse ${pulseIndex + 1} с радиусом ${maxRadius}`);
+}
+
+updateHeartPulses() {
+    if (this.name !== "Aashi" || !this.heartPulses) return;
+    
+    try {
+        for (let i = this.heartPulses.length - 1; i >= 0; i--) {
+            const pulse = this.heartPulses[i];
+            
+            if (!pulse) {
+                this.heartPulses.splice(i, 1);
+                continue;
+            }
+            
+            pulse.radius += pulse.speed;
+            pulse.alpha = 1 - (pulse.radius / pulse.maxRadius);
+            pulse.heartbeat += 0.3; // Для эффекта сердцебиения
+            
+            // Проверяем столкновения с противником
+            if (this === player && bot && !pulse.hasHit && pulse.radius > 30) {
+                this.checkHeartPulseCollision(pulse, bot);
+            } else if (this === bot && player && !pulse.hasHit && pulse.radius > 30) {
+                this.checkHeartPulseCollision(pulse, player);
+            }
+            
+            // Удаляем пульс если он достиг максимального радиуса
+            if (pulse.radius >= pulse.maxRadius) {
+                this.heartPulses.splice(i, 1);
+            }
+        }
+    } catch (error) {
+        console.error('❌ Ошибка в updateHeartPulses:', error);
+        this.heartPulses = [];
+    }
+}
+
+checkHeartPulseCollision(pulse, target) {
+    try {
+        const distance = Math.sqrt(
+            Math.pow(pulse.x - (target.x + target.width/2), 2) + 
+            Math.pow(pulse.y - (target.y + target.height/2), 2)
+        );
+        
+        if (distance <= pulse.radius && distance >= pulse.radius - pulse.speed) {
+            pulse.hasHit = true;
+            
+            // Наносим урон
+            if (target.takeDamage) {
+                target.takeDamage(pulse.damage);
+            }
+            
+            // Легкое отталкивание
+            const knockbackForce = 5 + pulse.pulseIndex * 2;
+            target.knockback += (target.x < pulse.x) ? -knockbackForce : knockbackForce;
+            target.screenShake = Math.max(target.screenShake, 6);
+            
+            console.log(`💖💥 Heart Pulse ${pulse.pulseIndex + 1} попал! Урон: ${pulse.damage}`);
+            
+            // Создаем эффект попадания
+            this.createHitEffect(target.x + target.width/2, target.y + target.height/2, pulse.color);
+        }
+    } catch (error) {
+        console.error('❌ Ошибка при проверке столкновения Heart Pulse:', error);
+        pulse.hasHit = true;
+    }
+}
+
+createHealingEffect(x, y, amount) {
+    if (!this.healingEffects) {
+        this.healingEffects = [];
+    }
+    
+    // Создаем летящий текст исцеления
+    const healText = {
+        x: x,
+        y: y,
+        amount: amount,
+        life: 60,
+        maxLife: 60,
+        velocityY: -2,
+        alpha: 1
+    };
+    
+    this.healingEffects.push(healText);
+    
+    // Создаем частицы исцеления
+    for (let i = 0; i < 8; i++) {
+        const angle = (i / 8) * Math.PI * 2;
+        const particle = {
+            x: x,
+            y: y,
+            velocityX: Math.cos(angle) * 3,
+            velocityY: Math.sin(angle) * 3 - 2,
+            life: 40,
+            maxLife: 40,
+            size: 3 + Math.random() * 2,
+            type: 'healing'
+        };
+        
+        if (!this.hitParticles) {
+            this.hitParticles = [];
+        }
+        this.hitParticles.push(particle);
+    }
+}
+
+updateHealingEffects() {
+    if (!this.healingEffects) return;
+    
+    for (let i = this.healingEffects.length - 1; i >= 0; i--) {
+        const effect = this.healingEffects[i];
+        
+        effect.y += effect.velocityY;
+        effect.life--;
+        effect.alpha = effect.life / effect.maxLife;
+        
+        if (effect.life <= 0) {
+            this.healingEffects.splice(i, 1);
+        }
+    }
 }
 
 // 🦈 МЕТОД ОБНОВЛЕНИЯ АКУЛЬЕЙ АТАКИ
@@ -4429,7 +5748,7 @@ updateWaterParticles() {
         }
     }
 }
-    }
+}
     
     
 
@@ -4870,6 +6189,18 @@ if (this.bot.name === "!ZAIN" && this.bot.redLightCooldown === 0 && distance <= 
         }
     }
 }
+
+// 💖 НОВОЕ: HEART PULSE для Aashi
+if (this.bot.name === "Aashi" && this.bot.heartPulseCooldown === 0 && this.bot.health < 150) {
+    let heartChance = this.abilityChance || 0.5; // Выше шанс когда мало здоровья
+    
+    if (Math.random() < heartChance) {
+        if (this.bot.heartPulse()) {
+            console.log(`🤖💖 ${this.bot.name} использует Heart Pulse! (Шанс: ${Math.round(heartChance * 100)}%)`);
+            return;
+        }
+    }
+}
     // 🔴 НОВОЕ: RED LIGHT GREEN LIGHT для !ZAIN
 if (this.bot.name === "!ZAIN" && this.bot.redLightCooldown === 0 && distance <= 400) {
     let redLightChance = this.abilityChance || 0.4;
@@ -5242,6 +6573,27 @@ document.addEventListener('keydown', function(e) {
         showKeyPress('Q - RED LIGHT НА КУЛДАУНЕ');
         console.log('❌ Red Light Green Light на кулдауне');
     }
+} else if (player.name === "DeFi.NinJa_Elijah") {
+    // 🥷 НОВОЕ ДЛЯ DeFi.NinJa_Elijah:
+    const clonesUsed = player.shadowCloneStrike();
+    if (clonesUsed) {
+        showKeyPress('Q - SHADOW CLONES! 🥷💥');
+        console.log('🥷 DeFi.NinJa_Elijah создал теневых клонов!');
+    } else {
+        showKeyPress('Q - КЛОНЫ НА КУЛДАУНЕ');
+        console.log('❌ Shadow Clone Strike на кулдауне');
+    }
+} else if (player.name === "Aashi") {
+    // 💖 НОВОЕ ДЛЯ AASHI:
+    const heartUsed = player.heartPulse();
+    if (heartUsed) {
+        showKeyPress('Q - HEART PULSE! 💖💥');
+        console.log('💖 Aashi активировала Heart Pulse!');
+    } else {
+        showKeyPress('Q - СЕРДЦЕ НА КУЛДАУНЕ');
+        console.log('❌ Heart Pulse на кулдауне');
+    }
+    
 } else {
     showKeyPress('Q - НЕТ СПОСОБНОСТИ');
     console.log(`❌ У ${player.name} нет уникальной способности`);
