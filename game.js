@@ -376,10 +376,33 @@ function setupMouseEvents() {
         e.stopPropagation();
         
         if (e.button === 0) { // Левая кнопка мыши
-            console.log('⚡ Попытка легкой атаки...');
-            let hitResult;
-            
-            if (player.canCounter > 0) {
+    console.log('⚡ Попытка легкой атаки...');
+    let hitResult;
+    
+    // 🔫 ИСПРАВЛЕНО: Проверяем режим автомата для cris
+    if (player.name === "cris" && player.isRifleMode) {
+        console.log(`🔫 cris пытается стрелять! Патронов: ${player.ammo}, Кулдаун: ${player.rifleFireCooldown}`);
+        
+        const fired = player.fireRifle();
+        if (fired) {
+            showKeyPress('ЛКМ - ВЫСТРЕЛ! 🔫');
+            console.log(`🔫 cris выстрелил из автомата!`);
+        } else if (player.ammo <= 0) {
+            showKeyPress('ЛКМ - НЕТ ПАТРОНОВ!');
+            console.log(`🔫 У cris закончились патроны!`);
+            if (!player.isReloading) {
+                player.startReload();
+                showKeyPress('АВТОПЕРЕЗАРЯДКА...');
+                console.log(`🔄 cris начал автоматическую перезарядку`);
+            }
+        } else if (player.rifleFireCooldown > 0) {
+            showKeyPress('ЛКМ - ПЕРЕЗАРЯДКА...');
+            console.log(`🔫 cris еще перезаряжается: ${player.rifleFireCooldown} кадров`);
+        }
+        return;
+    }
+    
+    if (player.canCounter > 0) {
                 console.log('💥 Выполняется контратака!');
                 hitResult = player.counterAttack(bot);
                 if (hitResult === 'hit') {
@@ -420,9 +443,40 @@ function setupMouseEvents() {
                 }
             }
             
-        } else if (e.button === 2) { // Правая кнопка мыши
-            console.log('💥 Попытка тяжелой атаки...');
-            const hitResult = player.heavyAttack(bot);
+     } else if (e.button === 2) { // Правая кнопка мыши
+    console.log('💥 Попытка тяжелой атаки...');
+    // 🏋️ НОВОЕ: Ручной бросок штанги для Lyron
+if (player.name === "Lyron" && player.isMuscle && player.isUsingBarbell && player.barbellPhase === 'carry') {
+    console.log(`🏋️ ${player.name} бросает живую штангу по ПКМ!`);
+    player.manualThrowRequested = true;
+    showKeyPress('ПКМ - БРОСОК ШТАНГИ! 🏋️💥');
+    return;
+}
+    
+    // 🔫 ИСПРАВЛЕНО: Быстрая стрельба для cris
+    if (player.name === "cris" && player.isRifleMode) {
+        console.log(`🔫 cris быстро стреляет! Патронов: ${player.ammo}`);
+        
+        // Быстрая стрельба - игнорируем небольшой кулдаун
+        if (player.rifleFireCooldown <= 3 && player.ammo > 0) {
+            player.rifleFireCooldown = 0; // Сбрасываем кулдаун для быстрой стрельбы
+            const fired = player.fireRifle();
+            if (fired) {
+                showKeyPress('ПКМ - БЫСТРЫЙ ОГОНЬ! 🔫💥');
+                console.log(`🔫 cris ведёт быстрый огонь!`);
+            }
+        } else if (player.ammo <= 0) {
+            showKeyPress('ПКМ - ПЕРЕЗАРЯДКА!');
+            if (!player.isReloading) {
+                player.startReload();
+            }
+        } else {
+            showKeyPress('ПКМ - ГОТОВИТСЯ К ВЫСТРЕЛУ...');
+        }
+        return;
+    }
+    
+    const hitResult = player.heavyAttack(bot);
             
             if (hitResult === 'hit') {
                 showKeyPress('ПКМ - ТЯЖЕЛЫЙ УДАР ПОПАЛ!');
@@ -491,9 +545,22 @@ const CHARACTERS = [
     images: {
       idle: "assets/Lyron.png",
       attack: "assets/LyronFight.png", 
-      portrait: "assets/Lyron.png"  ,
-      shield: "assets/lyronBlock.png"  // ← ДОБАВИТЬ ЭТО
-    }
+      portrait: "assets/Lyron.png",
+      shield: "assets/lyronBlock.png",
+      muscle_idle: "assets/muscle_idle.png",
+      muscle_punch: "assets/muscle_punch.png", 
+      muscle_carry: "assets/muscle_carry.png"
+    },
+    // ✨ НОВЫЕ СВОЙСТВА ДЛЯ MUSCLE TRANSFORMATION:
+    specialAbility: "muscleTransform",
+    abilityCooldown: 480,        // 8 секунд кулдаун
+    transformDuration: 300,      // 5 секунд действия
+    muscleHealthBonus: 50,       // +50 HP при трансформации
+    muscleDamageMultiplier: 1.33,// +33% урона
+    muscleSpeedMultiplier: 0.8,  // -20% скорости
+    muscleKnockbackResist: 0.5,  // +50% устойчивости
+    barbell_range: 80,           // Дистанция захвата штанги
+    barbell_carry_time: 180      // 3 секунды ношения
   },
 {
     key: "Tom.J",
@@ -690,10 +757,10 @@ const CHARACTERS = [
     // ✨ ИСПРАВЛЕННЫЕ СВОЙСТВА ДЛЯ RED LIGHT GREEN LIGHT:
     specialAbility: "redLightGreenLight",  // ← ЭТА СТРОКА КРИТИЧЕСКИ ВАЖНА!
     abilityCooldown: 480,                  // 8 секунд кулдаун
-    freezeDuration: 180,                   // 3 секунды действия
-    movementDamage: 15,                    // Урон за движение
+    freezeDuration: 320,                   // 3 секунды действия
+    movementDamage: 5,                    // Урон за движение
     detectionRadius: 400,                  // Радиус действия
-    animationDuration: 60                  // Длительность анимации позы
+    animationDuration: 120                  // Длительность анимации позы
 } ,
   {
     key: "sguzeva",
@@ -705,8 +772,14 @@ const CHARACTERS = [
       idle: "assets/sguzeva.png",
       attack: "assets/sguzeva_attack.png",
       portrait: "assets/sguzeva.png",
-      shield: "assets/sguzevablock.png"
-    }
+      shield: "assets/sguzevablock.png",
+      doubleJump: "assets/sguzevacombo.png"  // ← ДОБАВИТЬ ЭТУ СТРОКУ
+    },
+    // ✨ НОВЫЕ СВОЙСТВА ДЛЯ ДВОЙНОГО ПРЫЖКА:
+    specialAbility: "doubleJump",
+    abilityCooldown: 0,           // Без кулдауна
+    maxJumps: 2,                  // Максимум 2 прыжка
+    jumpResetTime: 60             // Время до сброса прыжков (1 секунда)
   },
   {
     key: "Kristina",
@@ -715,19 +788,20 @@ const CHARACTERS = [
     description: "Beware the dark power veiled behind radiant faces - Master of Self-Healing",
     element: "electric",
     images: {
-      idle: "assets/Kristina.png",
-      attack: "assets/KRISTINAATA.png",
-      portrait: "assets/Kristina.png",
-      shield: "assets/KristinaBlock.png",
-      healing: "assets/kristinacombo.png"  // ← НОВАЯ PNG ДЛЯ АНИМАЦИИ ИСЦЕЛЕНИЯ
+        idle: "assets/Kristina.png",
+        attack: "assets/KRISTINAATA.png",
+        portrait: "assets/Kristina.png",
+        shield: "assets/KristinaBlock.png",
+        scream: "assets/KristinaScream.png"  // ← ДОБАВИТЬ ВАШУ PNG КАРТИНКУ
     },
-    // ✨ НОВЫЕ СВОЙСТВА ДЛЯ САМОИСЦЕЛЕНИЯ:
-    specialAbility: "selfHealing",
-    abilityCooldown: 480,        // 8 секунд кулдаун
-    healingAmount: 80,           // Восстанавливает 80 HP
-    healingDuration: 120,        // 2 секунды анимации исцеления
-    healingParticleCount: 20,    // Количество частиц исцеления
-    maxHealingUses: 3            // Максимум 3 использования за бой
+    // 👻 НОВЫЕ СВОЙСТВА ДЛЯ BANSHEE SCREAM:
+    specialAbility: "bansheeScream",
+    abilityCooldown: 420,        // 7 секунд кулдаун
+    screamDuration: 180,         // 3 секунды действия
+    screamDamage: 35,            // Урон от крика
+    screamStunDuration: 90,      // 1.5 секунды оглушения
+    screamKnockback: 30,         // Сила отталкивания
+    screamRadius: 250            // Радиус действия крика
 },
    {
     key: "BUDEK",
@@ -772,7 +846,7 @@ const CHARACTERS = [
     key: "cris",
     name: "cris",
     color: "#ffa502",
-    description: "ZELLA1",
+    description: "Simple Fighter", // ← Изменить описание
     element: "electric",
     images: {
       idle: "assets/cris.png",
@@ -780,7 +854,7 @@ const CHARACTERS = [
       portrait: "assets/cris.png",
       shield: "assets/crisblock.png"
     }
-  },
+},
    {
     key: "effgennn.l33t",
     name: "effgennn.l33t",
@@ -788,12 +862,23 @@ const CHARACTERS = [
     description: "Master of Banana Magic",
     element: "bananas",
     images: {
-      idle: "assets/effgennn.l33t.png",
-      attack: "assets/effgennn.l33attack.png",
-      portrait: "assets/effgennn.l33t.png",
-      shield: "assets/effgennn.l33tblock.png",
-      transform: "assets/effgennn_transform.png"
-    }
+  idle: "assets/effgennn.l33t.png",
+  attack: "assets/effgennn.l33attack.png",
+  portrait: "assets/effgennn.l33t.png",
+  shield: "assets/effgennn.l33tblock.png",
+  transform: "assets/effgennn_transform.png",
+  monster: "assets/effgennn_monster.png",
+  monsterAttack: "assets/effgenn_monst_attack.png"  // ← НОВАЯ СТРОКА ДЛЯ АТАКИ МОНСТРА
+},
+    // 🍌 НОВЫЕ СВОЙСТВА ДЛЯ МОНСТР-ТРАНСФОРМАЦИИ:
+    specialAbility: "monsterTransform",
+    abilityCooldown: 600,        // 10 секунд кулдаун
+    transformDuration: 300,      // 5 секунд в форме монстра
+    monsterSizeMultiplier: 1.8,  // В 1.8 раза больше
+    monsterDamageMultiplier: 1.6, // +60% урона ко всем атакам
+    monsterSpeedMultiplier: 1.3,  // +30% скорости движения
+    monsterHealthRegen: 3,        // +3 HP каждый кадр
+    monsterKnockbackResist: 0.3   // Сопротивление отталкиванию
   }
   
 ];
@@ -1052,7 +1137,6 @@ class Fighter {
         this.useImages = useImages;
         
         // ✨ НОВЫЕ СВОЙСТВА ДЛЯ СПОСОБНОСТЕЙ ✨
-        this.magnitudeWaves = [];      // Массив волн для Lyron
         this.abilityCooldown = 0;      // Кулдаун способности (в кадрах)
         this.abilityDuration = 0;      // Длительность эффекта
         this.abilityActive = false;    // Активна ли способность
@@ -1138,6 +1222,7 @@ class Fighter {
         this.powerCooldown = 0;              // Кулдаун способности
         this.originalDamageMultiplier = 1;   // Оригинальный множитель урона
         
+        
         // ⚡ НОВЫЕ СВОЙСТВА ДЛЯ LIGHTNING CALL HEATHCLIFF
 this.lightningStrikes = [];          // Массив активных молний
 this.lightningCooldown = 0;          // Кулдаун способности
@@ -1161,11 +1246,61 @@ this.redLightWarnings = [];          // Визуальные предупреж�
         this.heartPulses = [];               // Массив пульсов сердца
         this.heartPulseCooldown = 0;         // Кулдаун способности
         this.healingEffects = [];            // Эффекты исцеления
+
+        // 🦘 НОВЫЕ СВОЙСТВА ДЛЯ ДВОЙНОГО ПРЫЖКА SGUZEVA
+        this.jumpsUsed = 0;              // Количество использованных прыжков
+        this.maxJumps = 1;               // Максимальное количество прыжков (обычно 1)
+        this.jumpResetTimer = 0;         // Таймер сброса прыжков
+        this.isDoubleJumping = false;    // Находится ли в состоянии двойного прыжка
+        this.doubleJumpEffect = 0;       // Эффект двойного прыжка
+
+        this.bansheeScreamActive = false;     // Активен ли крик
+this.screamDuration = 0;              // Длительность крика
+this.screamCooldown = 0;              // Кулдаун способности
+this.screamWaves = [];                // Звуковые волны
+this.screamEffects = [];              // Эффекты ужаса
+this.isScreaming = false;             // Находится ли в анимации крика
+
+// 🍌 НОВЫЕ СВОЙСТВА ДЛЯ МОНСТР-ТРАНСФОРМАЦИИ EFFGENNN.L33T
+this.isMonster = false;              // Находится ли в форме монстра
+// 🔫 НОВЫЕ СВОЙСТВА ДЛЯ АВТОМАТА CRIS
+this.isRifleMode = false;         // Режим автомата
+this.bullets = [];                // Массив летящих пуль
+this.rifleFireCooldown = 0;       // Кулдаун стрельбы
+this.ammo = 30;                   // Текущие патроны
+this.maxAmmo = 30;                // Максимум патронов
+this.isReloading = false;         // Процесс перезарядки
+this.reloadTimer = 0;             // Таймер перезарядки
+this.muzzleFlash = 0;             // Эффект вспышки
+this.bulletCasings = [];          // Гильзы от пуль
+this.monsterDuration = 0;            // Оставшееся время трансформации
+this.monsterCooldown = 0;            // Кулдаун способности
+// 🏋️ НОВЫЕ СВОЙСТВА ДЛЯ MUSCLE TRANSFORMATION LYRON
+this.isMuscle = false;               // Находится ли в форме качка
+this.muscleDuration = 0;             // Оставшееся время трансформации
+this.muscleCooldown = 0;             // Кулдаун способности
+this.originalMuscleSize = { width: this.width, height: this.height }; // Оригинальный размер
+this.originalMuscleSpeed = this.moveSpeed; // Оригинальная скорость
+this.muscleGlow = 0;                 // Эффект свечения качка
+this.muscleParticles = [];           // Частицы качка
+
+// 🏋️ ЖИВАЯ ШТАНГА
+this.isUsingBarbell = false;         // Использует ли живую штангу
+this.barbellPhase = 'none';          // Фаза: 'none', 'grab', 'lift', 'carry', 'throw'
+this.barbellTimer = 0;               // Таймер текущей фазы
+this.barbellTarget = null;           // Цель-штанга
+this.barbellCarryTime = 0;           // Время ношения штанги
+this.barbellUsedThisTransform = false; // Использовалась ли штанга в этой трансформации
+this.barbellHoldHeight = 0;          // Высота удержания над головой
+this.originalSize = { width: this.width, height: this.height }; // Оригинальный размер
+this.originalSpeed = this.moveSpeed; // Оригинальная скорость
+this.monsterGlow = 0;                // Эффект свечения монстра
+this.monsterParticles = [];          // Частицы монстра
+this.transforming = false;           // Находится ли в процессе трансформации
+this.transformTimer = 0;             // Таймер анимации трансформации
         
       
     }  // ← ВОТ ТУТ ЗАКРЫВАЕТСЯ constructor
-    
-    
     // СИСТЕМА АНИМАЦИИ АТАК
     updateAttackAnimation() {
         if (this.attackType === 'none') return;
@@ -1341,14 +1476,6 @@ this.redLightWarnings = [];          // Визуальные предупреж�
       // ✨ НОВЫЕ ОБНОВЛЕНИЯ ДЛЯ СПОСОБНОСТЕЙ ✨
     this.updateMagnitudeWaves();
     // Обновляем создание волн
-if (this.abilityActive && this.waveTimer !== undefined) {
-    this.waveTimer++;
-    if (this.waveTimer >= this.waveInterval && this.nextWaveIndex <= 2) {
-        this.createMagnitudeWave(this.nextWaveIndex);
-        this.nextWaveIndex++;
-        this.waveTimer = 0;
-    }
-}
     this.updateHitParticles();
     this.updateBottles();
     this.updateBottleExplosions();
@@ -1431,18 +1558,94 @@ this.updateRedLightWarnings();
 this.updateShadowClones();
 if (this.cloneCooldown > 0) this.cloneCooldown--;
 
-// 💖 НОВОЕ: ОБНОВЛЕНИЕ HEART PULSE AASHI
+
 // 💖 НОВОЕ: ОБНОВЛЕНИЕ HEART PULSE AASHI
 this.updateHeartPulses();
 this.updateHealingEffects();
 if (this.heartPulseCooldown > 0) this.heartPulseCooldown--;
 
+// 🦘 НОВОЕ: ОБНОВЛЕНИЕ ДВОЙНОГО ПРЫЖКА SGUZEVA
+if (this.jumpResetTimer > 0) this.jumpResetTimer--;
+if (this.doubleJumpEffect > 0) this.doubleJumpEffect--;
 
-
+// Сбрасываем прыжки когда персонаж на земле
+if (this.onGround && this.jumpResetTimer === 0) {
+    this.jumpsUsed = 0;
+    this.isDoubleJumping = false;
+}
 
 // Обновляем эффекты
 this.updateTransformEffects();
 this.updateTransformExplosions();
+// 👻 НОВОЕ: ОБНОВЛЕНИЕ BANSHEE SCREAM KRISTINA
+if (this.screamCooldown > 0) this.screamCooldown--;
+if (this.screamDuration > 0) {
+    this.screamDuration--;
+    this.updateBansheeScream();
+    
+    // Когда крик заканчивается
+    if (this.screamDuration === 0) {
+        this.bansheeScreamActive = false;
+        this.isScreaming = false;
+        console.log(`👻 ${this.name}: Banshee Scream закончился`);
+    }
+}
+this.updateScreamWaves();
+this.updateScreamEffects();
+
+// 🍌 НОВОЕ: ОБНОВЛЕНИЕ МОНСТР-ТРАНСФОРМАЦИИ EFFGENNN.L33T
+if (this.monsterCooldown > 0) this.monsterCooldown--;
+if (this.monsterGlow > 0) this.monsterGlow--;
+if (this.transformTimer > 0) this.transformTimer--;
+// 🏋️ НОВОЕ: ОБНОВЛЕНИЕ MUSCLE TRANSFORMATION LYRON
+if (this.muscleCooldown > 0) this.muscleCooldown--;
+if (this.muscleGlow > 0) this.muscleGlow--;
+
+// Обновляем трансформацию качка
+if (this.muscleDuration > 0) {
+    this.muscleDuration--;
+    this.updateMuscleForm();
+    
+    // Когда трансформация заканчивается
+    if (this.muscleDuration === 0) {
+        this.revertFromMuscle();
+        console.log(`🏋️ ${this.name}: трансформация качка закончилась`);
+    }
+}
+
+// Обновляем живую штангу
+this.updateBarbell();
+
+// Обновляем эффекты качка
+this.updateMuscleParticles();
+
+// Обновляем трансформацию
+if (this.monsterDuration > 0) {
+    this.monsterDuration--;
+    this.updateMonsterForm();
+    
+    // Когда трансформация заканчивается
+    if (this.monsterDuration === 0) {
+        this.revertFromMonster();
+        console.log(`🍌 ${this.name}: трансформация закончилась`);
+    }
+}
+
+// Обновляем эффекты монстра
+this.updateMonsterParticles();
+
+// Процесс трансформации
+
+
+
+// Процесс трансформации
+if (this.transforming && this.transformTimer <= 0) {
+    if (this.name === "Lyron" && !this.isMuscle) {
+        this.completeMuscleTransformation(); // ← НОВЫЙ МЕТОД ДЛЯ LYRON
+    } else {
+        this.completeTransformation(); // ← СТАРЫЙ МЕТОД ДЛЯ ДРУГИХ
+    }
+}
 }
 
     
@@ -1542,7 +1745,6 @@ if (!this.isTeleporting || this.teleportPhase !== 'disappear') {
         
         // UI элементы персонажа
         this.drawCharacterUI(ctx, drawX, drawY);
-         this.drawMagnitudeWaves(ctx, drawX, drawY);
         this.drawHitParticles(ctx);
         this.drawAbilityCooldown(ctx, drawX + this.width/2, drawY);
         
@@ -1580,69 +1782,89 @@ this.drawRedLightCooldown(ctx, this.x + this.width/2, this.y);
         this.drawHeartPulses(ctx);
         this.drawHealingEffects(ctx);
         this.drawHeartPulseCooldown(ctx, this.x + this.width/2, this.y);
+
+        this.drawScreamWaves(ctx);
+this.drawScreamEffects(ctx, drawX, drawY);
+this.drawBansheeScreamCooldown(ctx, this.x + this.width/2, this.y);
+
+// 🍌 НОВЫЕ МЕТОДЫ РИСОВАНИЯ ДЛЯ МОНСТР-ТРАНСФОРМАЦИИ
+this.drawMonsterEffects(ctx, drawX, drawY);
+this.drawMonsterParticles(ctx);
+this.drawMonsterCooldown(ctx, this.x + this.width/2, this.y);
     }
-   drawCharacterWithImage(ctx, drawX, drawY) {
+drawCharacterWithImage(ctx, drawX, drawY) {
     // Определяем какую картинку использовать
     let imageKey = 'idle';
-    
-    // 🍌 НОВОЕ: Проверяем состояние банана
-    if (this.isBanana) {
-        // Если превращен в банан - рисуем как банан!
-        return; // Выходим, не рисуем обычную картинку
+
+    if (this.isMonster && (this.isAttacking || this.attackFrame > 0)) {
+        imageKey = 'monsterAttack';
+    } else if (this.isMonster) {
+        imageKey = 'monster';
+    } else if (this.isMuscle && this.isUsingBarbell && this.barbellPhase === 'carry') {
+        imageKey = 'muscle_carry';
+    } else if (this.isMuscle && (this.isAttacking || this.attackFrame > 0)) {
+        imageKey = 'muscle_punch';
+    } else if (this.isMuscle) {
+        imageKey = 'muscle_idle';
+    } else if (this.name === "sguzeva" && this.isDoubleJumping && this.doubleJumpEffect > 0) {
+        imageKey = 'doubleJump';
     } else if (this.name === "!ZAIN" && this.redLightActive) {
-        imageKey = 'redLightPose';  // ← НОВАЯ СТРОКА: используем PNG красной позы
+        imageKey = 'redLightPose';
+    } else if (this.name === "Kristina" && this.isScreaming) {
+        imageKey = 'scream';
     } else if (this.name === "Burhan" && this.isGrappling && this.grapplePhase === 'throw') {
-        imageKey = 'grapple';  // ← НОВАЯ СТРОКА: используем PNG анимацию броска
+        imageKey = 'grapple';
     } else if (this.name === "Matt" && this.isSharkDashing) {
-        imageKey = 'sharkForm';  // ← НОВАЯ СТРОКА: используем PNG акулы для Matt
+        imageKey = 'sharkForm';
     } else if (this.name === "Xealist" && this.isPowered && (this.isAttacking || this.attackFrame > 0)) {
-        imageKey = 'poweredAttack';  // ← НОВАЯ PNG для усиленных атак
+        imageKey = 'poweredAttack';
     } else if (this.name === "Xealist" && this.isPowered) {
-        imageKey = 'powered';  // ← PNG для обычного состояния усиления
+        imageKey = 'powered';
     } else if (this.isAttacking || this.attackFrame > 0) {
         imageKey = 'attack';
     } else if (this.isBlocking) {
         imageKey = 'shield';
     }
     
-    // Определяем какой кэш использовать - игрока или бота
-    let currentCache, cacheLoaded;
-    if (this === player) {
-        currentCache = imageCache;
-        cacheLoaded = imagesLoaded;
-    } else {
-        currentCache = window.botImageCache || {};
-        cacheLoaded = window.botImagesLoaded || false;
-    }
+    // Определяем кэш
+    const currentCache = (this === player) ? imageCache : (window.botImageCache || {});
+    const cacheLoaded = (this === player) ? imagesLoaded : (window.botImagesLoaded || false);
     
     const img = currentCache[imageKey];
     if (!img || !cacheLoaded) {
-        // Если картинка не загружена, рисуем стандартным способом
         this.drawCharacter(ctx, drawX, drawY);
         return;
     }
     
-    // Сохраняем контекст для трансформаций
     ctx.save();
     
-    // Применяем эффекты
-    if (this.stunned > 0) {
-        ctx.filter = 'grayscale(50%) brightness(1.2)';
-    }
-    if (this.hitEffect > 0) {
-        ctx.filter = 'hue-rotate(180deg) brightness(1.5)';
-    }
-    
-    // Отражаем картинку если персонаж смотрит влево
-    if (!this.facingRight) {
-        ctx.translate(drawX + this.width, drawY);
-        ctx.scale(-1, 1);
-        ctx.drawImage(img, 0, 0, this.width, this.height);
+    // 🏋️ Горизонтальная ориентация штанги
+    if (this.isHorizontal && this.horizontalRotation) {
+        const centerX = drawX + this.width / 2;
+        const centerY = drawY + this.height / 2;
+        
+        ctx.translate(centerX, centerY);
+        ctx.rotate(this.horizontalRotation);
+        ctx.drawImage(img, -this.width/2, -this.height/2, this.width, this.height);
+        
     } else {
-        ctx.drawImage(img, drawX, drawY, this.width, this.height);
+        // Обычное рисование
+        if (this.stunned > 0) {
+            ctx.filter = 'grayscale(50%) brightness(1.2)';
+        }
+        if (this.hitEffect > 0) {
+            ctx.filter = 'hue-rotate(180deg) brightness(1.5)';
+        }
+        
+        if (!this.facingRight) {
+            ctx.translate(drawX + this.width, drawY);
+            ctx.scale(-1, 1);
+            ctx.drawImage(img, 0, 0, this.width, this.height);
+        } else {
+            ctx.drawImage(img, drawX, drawY, this.width, this.height);
+        }
     }
     
-    // Восстанавливаем контекст
     ctx.restore();
 }
  
@@ -2185,16 +2407,28 @@ this.drawRedLightCooldown(ctx, this.x + this.width/2, this.y);
         }
     }
     
-    jump() {
-        // Простой прыжок только с земли или койот-тайм
-        if (this.onGround || this.coyoteTime > 0) {
-            this.performJump();
+   jump() {
+        // 🦘 СПЕЦИАЛЬНАЯ ЛОГИКА ДЛЯ SGUZEVA - ДВОЙНОЙ ПРЫЖОК
+        if (this.name === "sguzeva") {
+            const characterConfig = CHARACTERS.find(char => char.name === this.name);
+            const maxJumps = characterConfig ? characterConfig.maxJumps : 2;
+            
+            // Можем прыгать если не исчерпали лимит прыжков
+            if (this.jumpsUsed < maxJumps) {
+                this.performDoubleJump();
+            } else {
+                // Буфер прыжка для приземления
+                this.jumpBuffer = 8;
+            }
         } else {
-            // Буфер прыжка - если нажали прыжок чуть раньше приземления
-            this.jumpBuffer = 8;
+            // Обычная логика для других персонажей
+            if (this.onGround || this.coyoteTime > 0) {
+                this.performJump();
+            } else {
+                this.jumpBuffer = 8;
+            }
         }
     }
-    
     performJump() {
         this.velocityY = -this.jumpPower;
         this.onGround = false;
@@ -2209,6 +2443,70 @@ this.drawRedLightCooldown(ctx, this.x + this.width/2, this.y);
         
         // Эффект прыжка
         this.jumpEffect = 10;
+    }
+    // 🦘 НОВЫЙ МЕТОД ДЛЯ ДВОЙНОГО ПРЫЖКА SGUZEVA
+    performDoubleJump() {
+        // Увеличиваем счетчик использованных прыжков
+        this.jumpsUsed++;
+        
+        if (this.jumpsUsed === 1) {
+            // ПЕРВЫЙ ПРЫЖОК - обычный как у всех персонажей
+            this.velocityY = -this.jumpPower;  // Обычная сила прыжка
+            this.onGround = false;             // Больше не на земле
+            this.coyoteTime = 0;               // Сбрасываем койот-тайм
+            
+            console.log(`🦘 ${this.name}: Первый прыжок выполнен!`);
+            
+        } else if (this.jumpsUsed === 2) {
+            // ВТОРОЙ ПРЫЖОК - МАГИЧЕСКИЙ ДВОЙНОЙ ПРЫЖОК!
+            this.velocityY = -this.jumpPower * 0.4;  // На 20% сильнее обычного прыжка!
+            this.isDoubleJumping = true;              // Активируем флаг двойного прыжка
+            this.doubleJumpEffect = 30;               // 30 кадров красивых эффектов
+            
+            // Создаем красивые визуальные эффекты
+            this.createDoubleJumpEffects();
+            
+            console.log(`🦘✨ ${this.name}: ДВОЙНОЙ ПРЫЖОК активирован! Высота увеличена на 20%!`);
+        }
+        
+        // НАПРАВЛЕННЫЙ ПРЫЖОК - если персонаж двигался, добавляем скорость
+        if (this.velocityX < -1) {
+            this.velocityX -= 4; // Дополнительная скорость влево
+        } else if (this.velocityX > 1) {
+            this.velocityX += 4; // Дополнительная скорость вправо
+        }
+        
+        // Устанавливаем таймер для сброса прыжков
+        const characterConfig = CHARACTERS.find(char => char.name === this.name);
+        this.jumpResetTimer = characterConfig ? characterConfig.jumpResetTime : 60; // 60 кадров = 1 секунда
+        
+        // Обычный эффект прыжка
+        this.jumpEffect = 10;
+    }
+    createDoubleJumpEffects() {
+        if (!this.hitParticles) {
+            this.hitParticles = [];
+        }
+        
+        // Создаем красивые частицы двойного прыжка
+        for (let i = 0; i < 15; i++) {
+            const angle = (i / 15) * Math.PI * 2;
+            const speed = 4 + Math.random() * 6;
+            
+            const particle = {
+                x: this.x + this.width/2,
+                y: this.y + this.height/2,
+                velocityX: Math.cos(angle) * speed,
+                velocityY: Math.sin(angle) * speed + 2, // Летят вниз
+                life: 40 + Math.random() * 20,
+                maxLife: 60,
+                size: 3 + Math.random() * 4,
+                color: 'hsl(280, 80%, 70%)', // Фиолетовый цвет для sguzeva
+                type: 'doubleJump'
+            };
+            
+            this.hitParticles.push(particle);
+        }
     }
     
     // Проверка буфера прыжка при приземлении
@@ -2248,16 +2546,27 @@ this.drawRedLightCooldown(ctx, this.x + this.width/2, this.y);
             }
         }, 250);
         
-        // 💡 УЧИТЫВАЕМ УСИЛЕНИЕ XEALIST
-        let damage = 15;
-        if (this.name === "Xealist" && this.isPowered) {
-            const characterConfig = CHARACTERS.find(char => char.name === this.name);
-            const multiplier = characterConfig ? characterConfig.damageMultiplier : 2;
-            damage = damage * multiplier;
-            console.log(`💡 УСИЛЕННАЯ атака! Урон: ${damage} (было ${15})`);
-        }
-        
-        return this.executeAttack(target, damage, 75, 'light');
+        // 🍌 УСИЛЕННЫЙ УРОН В ФОРМЕ МОНСТРА + 💡 УЧИТЫВАЕМ УСИЛЕНИЕ XEALIST + 🏋️ КАЧОК
+let damage = 15;
+if (this.isMonster) {
+    const characterConfig = CHARACTERS.find(char => char.name === this.name);
+    const damageMultiplier = characterConfig ? characterConfig.monsterDamageMultiplier : 1.6;
+    damage = Math.floor(damage * damageMultiplier);
+    console.log(`🍌💥 МОНСТР-АТАКА! Урон увеличен до ${damage} (было 15)`);
+} else if (this.isMuscle) {
+    const characterConfig = CHARACTERS.find(char => char.name === this.name);
+    const muscleMultiplier = characterConfig ? characterConfig.muscleDamageMultiplier : 1.33;
+    damage = Math.floor(damage * muscleMultiplier);
+    console.log(`🏋️💥 КАЧОК-УДАР! Урон увеличен до ${damage} (было 15)`);
+}
+if (this.name === "Xealist" && this.isPowered) {
+    const characterConfig = CHARACTERS.find(char => char.name === this.name);
+    const multiplier = characterConfig ? characterConfig.damageMultiplier : 2;
+    damage = damage * multiplier;
+    console.log(`💡 УСИЛЕННАЯ атака! Урон: ${damage}`);
+}
+
+return this.executeAttack(target, damage, 75, 'light');
     }
     
     heavyAttack(target) {
@@ -2278,16 +2587,32 @@ this.drawRedLightCooldown(ctx, this.x + this.width/2, this.y);
             }
         }, 420);
         
-        // 💡 УЧИТЫВАЕМ УСИЛЕНИЕ XEALIST
-        let damage = 25;
-        if (this.name === "Xealist" && this.isPowered) {
-            const characterConfig = CHARACTERS.find(char => char.name === this.name);
-            const multiplier = characterConfig ? characterConfig.damageMultiplier : 2;
-            damage = damage * multiplier;
-            console.log(`💡 УСИЛЕННАЯ тяжелая атака! Урон: ${damage} (было ${25})`);
-        }
-        
-        return this.executeAttack(target, damage, 85, 'heavy');
+       // 🍌 УСИЛЕННЫЙ УРОН В ФОРМЕ МОНСТРА + 💡 УЧИТЫВАЕМ УСИЛЕНИЕ XEALIST + 🏋️ КАЧОК
+let damage = 25;
+if (this.isMonster) {
+    const characterConfig = CHARACTERS.find(char => char.name === this.name);
+    const damageMultiplier = characterConfig ? characterConfig.monsterDamageMultiplier : 1.6;
+    damage = Math.floor(damage * damageMultiplier);
+    console.log(`🍌💥 МОНСТР-ТЯЖЕЛАЯ АТАКА! Урон увеличен до ${damage} (было 25)`);
+} else if (this.isMuscle) {
+    const characterConfig = CHARACTERS.find(char => char.name === this.name);
+    const muscleMultiplier = characterConfig ? characterConfig.muscleDamageMultiplier : 1.33;
+    damage = Math.floor(damage * muscleMultiplier);
+    console.log(`🏋️💥 КАЧОК-ТЯЖЕЛЫЙ УДАР! Урон увеличен до ${damage} (было 25)`);
+}
+if (this.name === "Xealist" && this.isPowered) {
+    const characterConfig = CHARACTERS.find(char => char.name === this.name);
+    const multiplier = characterConfig ? characterConfig.damageMultiplier : 2;
+    damage = damage * multiplier;
+    console.log(`💡 УСИЛЕННАЯ тяжелая атака! Урон: ${damage}`);
+}
+
+// 🏋️ НОВОЕ: ЖИВАЯ ШТАНГА для Lyron качка
+if (this.name === "Lyron" && this.isMuscle && !this.barbellUsedThisTransform) {
+    return this.useLivingBarbell(target);
+}
+
+return this.executeAttack(target, damage, 85, 'heavy');
     }
     
     counterAttack(target) {
@@ -3552,111 +3877,6 @@ drawBottleThrowCooldown(ctx, x, y) {
     ctx.fillRect(x - 30, y - 25, 60 * (1 - cooldownPercent), 6);
 }
     
-    drawMagnitudeWaves(ctx, drawX, drawY) {
-        if (this.name !== "Lyron" || this.magnitudeWaves.length === 0) return;
-        
-        this.magnitudeWaves.forEach(wave => {
-            // 🌊 КРАСИВЫЕ МНОЖЕСТВЕННЫЕ КОЛЬЦА ВОЛНЫ
-            for (let ring = 0; ring < 3; ring++) {
-                let ringRadius = wave.radius - (ring * 15);
-                if (ringRadius <= 0) continue;
-                
-                let ringAlpha = wave.alpha * (1 - ring * 0.3);
-                let ringWidth = 6 - ring * 2;
-                
-                // Основное кольцо волны
-                ctx.strokeStyle = `hsla(${200 + wave.waveIndex * 30}, 100%, ${70 - ring * 10}%, ${ringAlpha})`;
-                ctx.lineWidth = ringWidth;
-                ctx.setLineDash([]);
-                
-                ctx.beginPath();
-                ctx.arc(wave.x, wave.y, ringRadius, 0, 2 * Math.PI);
-                ctx.stroke();
-            }
-            
-            // ✨ ВНУТРЕННЕЕ СВЕЧЕНИЕ ВОЛНЫ
-            ctx.strokeStyle = `rgba(255, 255, 255, ${wave.alpha * 0.9})`;
-            ctx.lineWidth = 2;
-            
-            ctx.beginPath();
-            ctx.arc(wave.x, wave.y, wave.radius * 0.8, 0, 2 * Math.PI);
-            ctx.stroke();
-            
-            // 🌟 ЭНЕРГЕТИЧЕСКИЕ ИСКРЫ ПО КРАЮ ВОЛНЫ
-            const sparkCount = Math.floor(wave.radius / 15);
-            for (let i = 0; i < sparkCount; i++) {
-                const angle = (i / sparkCount) * Math.PI * 2 + Date.now() * 0.005;
-                const sparkRadius = wave.radius + Math.sin(Date.now() * 0.01 + i) * 5;
-                const sparkX = wave.x + Math.cos(angle) * sparkRadius;
-                const sparkY = wave.y + Math.sin(angle) * sparkRadius;
-                
-                // Большие яркие искры
-                const sparkSize = 2 + Math.sin(Date.now() * 0.02 + i) * 1;
-                ctx.fillStyle = `rgba(255, 255, 255, ${wave.alpha})`;
-                ctx.beginPath();
-                ctx.arc(sparkX, sparkY, sparkSize, 0, 2 * Math.PI);
-                ctx.fill();
-                
-                // Дополнительное свечение искр
-                ctx.shadowColor = `hsla(${200 + wave.waveIndex * 30}, 100%, 80%, ${wave.alpha})`;
-                ctx.shadowBlur = 8;
-                ctx.beginPath();
-                ctx.arc(sparkX, sparkY, sparkSize * 0.5, 0, 2 * Math.PI);
-                ctx.fill();
-                ctx.shadowBlur = 0;
-            }
-            
-            // 🔥 ЦЕНТРАЛЬНОЕ ЭНЕРГЕТИЧЕСКОЕ ЯДРО
-            if (wave.radius < 120) {
-                const centerAlpha = (120 - wave.radius) / 120 * wave.alpha;
-                const pulseFactor = 1 + Math.sin(Date.now() * 0.01) * 0.3;
-                
-                // Создаем красивый радиальный градиент
-                const gradient = ctx.createRadialGradient(
-                    wave.x, wave.y, 0, 
-                    wave.x, wave.y, 40 * pulseFactor
-                );
-                
-                gradient.addColorStop(0, `rgba(255, 255, 255, ${centerAlpha})`);
-                gradient.addColorStop(0.3, `hsla(${200 + wave.waveIndex * 30}, 100%, 80%, ${centerAlpha * 0.8})`);
-                gradient.addColorStop(0.7, `hsla(${200 + wave.waveIndex * 30}, 100%, 60%, ${centerAlpha * 0.4})`);
-                gradient.addColorStop(1, `hsla(${200 + wave.waveIndex * 30}, 100%, 40%, 0)`);
-                
-                ctx.fillStyle = gradient;
-                ctx.beginPath();
-                ctx.arc(wave.x, wave.y, 40 * pulseFactor, 0, 2 * Math.PI);
-                ctx.fill();
-                
-                // Дополнительное внутреннее свечение
-                ctx.fillStyle = `rgba(255, 255, 255, ${centerAlpha * 0.5})`;
-                ctx.beginPath();
-                ctx.arc(wave.x, wave.y, 15 * pulseFactor, 0, 2 * Math.PI);
-                ctx.fill();
-            }
-            
-            // ⚡ ЭЛЕКТРИЧЕСКИЕ РАЗРЯДЫ ВОКРУГ ВОЛНЫ
-            if (wave.radius > 80 && wave.radius < 250) {
-                for (let i = 0; i < 6; i++) {
-                    const lightningAngle = (i / 6) * Math.PI * 2 + Date.now() * 0.01;
-                    const lightningLength = 20 + Math.random() * 15;
-                    
-                    const startX = wave.x + Math.cos(lightningAngle) * wave.radius;
-                    const startY = wave.y + Math.sin(lightningAngle) * wave.radius;
-                    const endX = startX + Math.cos(lightningAngle + Math.random() - 0.5) * lightningLength;
-                    const endY = startY + Math.sin(lightningAngle + Math.random() - 0.5) * lightningLength;
-                    
-                    ctx.strokeStyle = `rgba(255, 255, 255, ${wave.alpha * 0.8})`;
-                    ctx.lineWidth = 2;
-                    ctx.beginPath();
-                    ctx.moveTo(startX, startY);
-                    ctx.lineTo(endX, endY);
-                    ctx.stroke();
-                }
-            }
-        });
-    }
-
-    
     drawHitParticles(ctx) {
         this.hitParticles.forEach(particle => {
             const alpha = particle.life / particle.maxLife;
@@ -3983,6 +4203,7 @@ drawLightningCooldown(ctx, x, y) {
         ctx.fillText('⚡', x, y - 45);
     }
 }
+
 // 🔴 МЕТОДЫ РИСОВАНИЯ RED LIGHT GREEN LIGHT ДЛЯ !ZAIN
 drawRedLightWarnings(ctx) {
     if (!this.redLightWarnings || this.name !== "!ZAIN") return;
@@ -5351,9 +5572,960 @@ drawTransformExplosions(ctx) {
             ctx.fillStyle = `rgba(255, 215, 0, ${alpha})`;
             ctx.fillText('🍌', emojiX, emojiY + 5);
         }
+   
+    }
+);
+    
+}
+// 🍌 МЕТОДЫ МОНСТР-ТРАНСФОРМАЦИИ
+monsterTransform() {
+    if (this.monsterCooldown > 0 || this.name !== "effgennn.l33t") {
+        console.log(`❌ Monster Transform недоступен! Кулдаун: ${Math.ceil(this.monsterCooldown / 60)} сек`);
+        return false;
+    }
+    
+    if (!gameRunning || !gameStarted) {
+        console.log('❌ Игра не активна!');
+        return false;
+    }
+    
+    if (this.isMonster) {
+        console.log('❌ Уже в форме монстра!');
+        return false;
+    }
+    
+    console.log(`🍌 ${this.name} начинает МОНСТР-ТРАНСФОРМАЦИЮ!`);
+    
+    const characterConfig = CHARACTERS.find(char => char.name === this.name);
+    
+    this.transforming = true;
+    this.transformTimer = 30;
+    this.monsterCooldown = characterConfig ? characterConfig.abilityCooldown : 600;
+    
+    this.createTransformEffect(this.x + this.width/2, this.y + this.height/2);
+    this.monsterGlow = 60;
+    
+    console.log(`🍌 Трансформация начата! Анимация: ${this.transformTimer} кадров`);
+    return true;
+}
+completeTransformation() {
+    const characterConfig = CHARACTERS.find(char => char.name === this.name);
+    
+    this.isMonster = true;
+    this.transforming = false;
+    this.monsterDuration = characterConfig ? characterConfig.transformDuration : 300;
+    
+    this.originalSize = { width: this.width, height: this.height };
+    this.originalSpeed = this.moveSpeed;
+    
+    const sizeMultiplier = characterConfig ? characterConfig.monsterSizeMultiplier : 1.8;
+    const speedMultiplier = characterConfig ? characterConfig.monsterSpeedMultiplier : 1.3;
+    const knockbackResist = characterConfig ? characterConfig.monsterKnockbackResist : 0.3;
+    
+    this.width = Math.floor(this.originalSize.width * sizeMultiplier);
+    this.height = Math.floor(this.originalSize.height * sizeMultiplier);
+    this.moveSpeed = this.originalSpeed * speedMultiplier;
+    this.knockbackResistance = knockbackResist;
+    
+    this.createTransformationExplosion(this.x + this.width/2, this.y + this.height/2);
+    this.screenShake = Math.max(this.screenShake, 12);
+    this.monsterGlow = 40;
+    
+    console.log(`🍌💥 ${this.name} превратился в МОНСТРА! Размер: x${sizeMultiplier}, Скорость: x${speedMultiplier}`);
+}
+
+// 🏋️ ИСПРАВЛЕННЫЙ МЕТОД ДЛЯ LYRON
+completeMuscleTransformation() {
+    const characterConfig = CHARACTERS.find(char => char.name === this.name);
+    
+    this.isMuscle = true;
+    this.transforming = false;
+    this.muscleDuration = characterConfig ? characterConfig.transformDuration : 300;
+    
+    // Сохраняем оригинальные параметры
+    this.originalMuscleSize = { width: this.width, height: this.height };
+    this.originalMuscleSpeed = this.moveSpeed;
+    
+    // УВЕЛИЧЕНИЕ В 3 РАЗА ДЛЯ LYRON
+    const sizeMultiplier = 1.2; // ФИКСИРОВАННОЕ УВЕЛИЧЕНИЕ В 3 РАЗА
+    const speedMultiplier = characterConfig ? characterConfig.muscleSpeedMultiplier : 0.8;
+    const knockbackResist = characterConfig ? characterConfig.muscleKnockbackResist : 0.5;
+    
+    this.width = Math.floor(this.originalMuscleSize.width * sizeMultiplier);
+    this.height = Math.floor(this.originalMuscleSize.height * sizeMultiplier);
+    this.moveSpeed = this.originalMuscleSpeed * speedMultiplier;
+    this.knockbackResistance = knockbackResist;
+    
+    // Применяем баффы качка
+    const healthBonus = characterConfig ? characterConfig.muscleHealthBonus : 50;
+    this.health = Math.min(this.maxHealth, this.health + healthBonus);
+    
+    this.createMuscleTransformEffect(this.x + this.width/2, this.y + this.height/2);
+    this.screenShake = Math.max(this.screenShake, 15);
+    this.muscleGlow = 60;
+    
+    console.log(`🏋️💥 ${this.name} превратился в ГИГАНТСКОГО КАЧКА! Размер: x${sizeMultiplier}!`);
+}
+
+updateMonsterForm() {
+    if (!this.isMonster) return;
+    
+    const characterConfig = CHARACTERS.find(char => char.name === this.name);
+    const healthRegen = characterConfig ? characterConfig.monsterHealthRegen : 3;
+    
+    this.health = Math.min(this.maxHealth, this.health + healthRegen);
+    
+    if (Math.random() < 0.3) {
+        this.createMonsterParticles(this.x + this.width/2, this.y + this.height/2);
+    }
+}
+
+revertFromMonster() {
+    if (!this.isMonster) return;
+    
+    this.isMonster = false;
+    this.width = this.originalSize.width;
+    this.height = this.originalSize.height;
+    this.moveSpeed = this.originalSpeed;
+    this.knockbackResistance = 1.0;
+    
+    this.createTransformEffect(this.x + this.width/2, this.y + this.height/2);
+    this.monsterGlow = 30;
+    
+    console.log(`🍌 ${this.name} вернулся в нормальную форму`);
+}
+
+createMonsterParticles(x, y) {
+    if (!this.monsterParticles) {
+        this.monsterParticles = [];
+    }
+    
+    for (let i = 0; i < 3; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const particle = {
+            x: x + (Math.random() - 0.5) * 40,
+            y: y + (Math.random() - 0.5) * 40,
+            velocityX: Math.cos(angle) * 2,
+            velocityY: Math.sin(angle) * 2 - 1,
+            life: 60 + Math.random() * 40,
+            maxLife: 100,
+            size: 4 + Math.random() * 3,
+            color: Math.random() < 0.5 ? 'orange' : 'red'
+        };
+        
+        this.monsterParticles.push(particle);
+    }
+}
+
+updateMonsterParticles() {
+    if (!this.monsterParticles) return;
+    
+    for (let i = this.monsterParticles.length - 1; i >= 0; i--) {
+        const particle = this.monsterParticles[i];
+        
+        particle.x += particle.velocityX;
+        particle.y += particle.velocityY;
+        particle.velocityY += 0.1;
+        particle.life--;
+        
+        if (particle.life <= 0) {
+            this.monsterParticles.splice(i, 1);
+        }
+    }
+}
+
+drawMonsterEffects(ctx, drawX, drawY) {
+    if (this.name !== "effgennn.l33t") return;
+    
+    if (this.transforming) {
+        const progress = 1 - (this.transformTimer / 30);
+        const centerX = drawX + this.width/2;
+        const centerY = drawY + this.height/2;
+        
+        for (let ring = 0; ring < 3; ring++) {
+            const radius = 50 + ring * 20;
+            const alpha = (1 - progress) * (1 - ring * 0.3);
+            
+            ctx.strokeStyle = `rgba(255, 165, 0, ${alpha})`;
+            ctx.lineWidth = 4 - ring;
+            ctx.setLineDash([10, 5]);
+            
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, radius, progress * Math.PI * 2, (progress + 0.5) * Math.PI * 2);
+            ctx.stroke();
+            ctx.setLineDash([]);
+        }
+        
+        ctx.fillStyle = `rgba(255, 215, 0, ${progress})`;
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, 30 * progress, 0, 2 * Math.PI);
+        ctx.fill();
+    }
+    
+    if (this.isMonster && this.monsterGlow > 0) {
+        const centerX = drawX + this.width/2;
+        const centerY = drawY + this.height/2;
+        const glowIntensity = this.monsterGlow / 40;
+        
+        ctx.shadowColor = 'rgba(255, 69, 0, 0.8)';
+        ctx.shadowBlur = 20;
+        
+        ctx.strokeStyle = `rgba(255, 69, 0, ${glowIntensity})`;
+        ctx.lineWidth = 6;
+        ctx.strokeRect(drawX - 3, drawY - 3, this.width + 6, this.height + 6);
+        
+        ctx.shadowBlur = 0;
+        
+        for (let i = 0; i < 8; i++) {
+            const angle = (i / 8) * Math.PI * 2 + Date.now() * 0.01;
+            const sparkX = centerX + Math.cos(angle) * 60;
+            const sparkY = centerY + Math.sin(angle) * 60;
+            
+            ctx.fillStyle = `rgba(255, 140, 0, ${glowIntensity * 0.8})`;
+            ctx.beginPath();
+            ctx.arc(sparkX, sparkY, 3, 0, 2 * Math.PI);
+            ctx.fill();
+        }
+    }
+}
+
+drawMonsterParticles(ctx) {
+    if (!this.monsterParticles || this.name !== "effgennn.l33t") return;
+    
+    this.monsterParticles.forEach(particle => {
+        const alpha = particle.life / particle.maxLife;
+        
+        ctx.fillStyle = particle.color === 'orange' ? `rgba(255, 165, 0, ${alpha})` : `rgba(255, 69, 0, ${alpha})`;
+        ctx.beginPath();
+        ctx.arc(particle.x, particle.y, particle.size, 0, 2 * Math.PI);
+        ctx.fill();
+        
+        ctx.shadowColor = particle.color === 'orange' ? 'rgba(255, 165, 0, 0.6)' : 'rgba(255, 69, 0, 0.6)';
+        ctx.shadowBlur = 8;
+        ctx.fillStyle = `rgba(255, 255, 255, ${alpha * 0.5})`;
+        ctx.beginPath();
+        ctx.arc(particle.x, particle.y, particle.size * 0.5, 0, 2 * Math.PI);
+        ctx.fill();
+        ctx.shadowBlur = 0;
     });
 }
 
+drawMonsterCooldown(ctx, x, y) {
+    if (this.name !== "effgennn.l33t" || this.monsterCooldown <= 0) return;
+    
+    const cooldownPercent = this.monsterCooldown / 600;
+    ctx.fillStyle = 'rgba(255, 140, 0, 0.8)';
+    ctx.fillRect(x - 30, y - 95, 60 * (1 - cooldownPercent), 6);
+    
+    if (cooldownPercent > 0.5) {
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+        ctx.font = 'bold 12px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('🍌', x, y - 100);
+    }
+}
+// 🏋️ МЕТОДЫ MUSCLE TRANSFORMATION ДЛЯ LYRON
+muscleTransform() {
+    if (this.muscleCooldown > 0 || this.name !== "Lyron") {
+        console.log(`❌ Muscle Transform недоступен! Кулдаун: ${Math.ceil(this.muscleCooldown / 60)} сек`);
+        return false;
+    }
+    
+    if (!gameRunning || !gameStarted) {
+        console.log('❌ Игра не активна!');
+        return false;
+    }
+    
+    if (this.isMuscle) {
+        console.log('❌ Уже в форме качка!');
+        return false;
+    }
+    
+    console.log(`🏋️ ${this.name} начинает ГИГАНТСКУЮ MUSCLE TRANSFORMATION!`);
+    
+    const characterConfig = CHARACTERS.find(char => char.name === this.name);
+    
+    // Запускаем процесс трансформации
+    this.transforming = true;
+    this.transformTimer = 30; // 30 кадров анимации
+    this.muscleCooldown = characterConfig ? characterConfig.abilityCooldown : 480;
+    this.barbellUsedThisTransform = false;
+    
+    // Визуальные эффекты начала трансформации
+    this.createMuscleTransformEffect(this.x + this.width/2, this.y + this.height/2);
+    this.muscleGlow = 60;
+    this.screenShake = Math.max(this.screenShake, 15);
+    
+    console.log(`🏋️💥 ${this.name} начинает превращение в ГИГАНТА!`);
+    return true;
+}
+
+revertFromMuscle() {
+    if (!this.isMuscle) return;
+    
+    this.isMuscle = false;
+    this.width = this.originalMuscleSize.width;
+    this.height = this.originalMuscleSize.height;
+    this.moveSpeed = this.originalMuscleSpeed;
+    this.knockbackResistance = 1.0;
+    this.isUsingBarbell = false;
+    this.barbellPhase = 'none';
+    this.barbellTarget = null;
+    
+    this.createMuscleTransformEffect(this.x + this.width/2, this.y + this.height/2);
+    this.muscleGlow = 30;
+    
+    console.log(`🏋️ ${this.name} вернулся в нормальную форму`);
+}
+
+updateMuscleForm() {
+    if (!this.isMuscle) return;
+    
+    // Создаем частицы силы
+    if (Math.random() < 0.2) {
+        this.createMuscleParticles(this.x + this.width/2, this.y + this.height/2);
+    }
+}
+
+// 🏋️ ЖИВАЯ ШТАНГА - ОСНОВНОЙ МЕТОД
+useLivingBarbell(target) {
+    const characterConfig = CHARACTERS.find(char => char.name === this.name);
+    const barbellRange = characterConfig ? characterConfig.barbell_range : 80;
+    const distance = Math.abs(this.x - target.x);
+    
+    if (distance > barbellRange) {
+        console.log(`❌ Цель слишком далеко для живой штанги! Дистанция: ${distance}, нужно: ${barbellRange}`);
+        return false;
+    }
+    
+    console.log(`🏋️ ${this.name} хватает ${target.name} как живую штангу!`);
+    
+    // Начинаем использование живой штанги
+    this.isUsingBarbell = true;
+    this.barbellPhase = 'grab';
+    this.barbellTimer = 10; // 10 кадров на захват
+    this.barbellTarget = target;
+    this.barbellUsedThisTransform = true;
+    
+    // Останавливаем движение обеих персонажей
+    this.velocityX = 0;
+    this.velocityY = 0;
+    target.velocityX = 0;
+    target.velocityY = 0;
+    target.stunned = 15; // Кратковременное оглушение при захвате
+    
+    return 'barbell_started';
+}
+
+// 🏋️ ОБНОВЛЕНИЕ ЖИВОЙ ШТАНГИ
+// 🏋️ ОБНОВЛЕНИЕ ЖИВОЙ ШТАНГИ
+updateBarbell() {
+    if (!this.isUsingBarbell || !this.barbellTarget) return;
+    
+    this.barbellTimer--;
+    
+    switch (this.barbellPhase) {
+        case 'grab':
+            // Фаза захвата
+            if (this.barbellTimer <= 0) {
+                this.barbellPhase = 'lift';
+                this.barbellTimer = 30; // 30 кадров на подъем
+                console.log(`🏋️ ${this.name} поднимает ${this.barbellTarget.name} над головой!`);
+            }
+            break;
+            
+        case 'lift':
+            // Фаза подъема
+            const liftProgress = 1 - (this.barbellTimer / 30);
+            this.barbellHoldHeight = liftProgress * 80; // Поднимаем на 80 пикселей
+            
+            // Цель следует за качком во время подъема
+            this.barbellTarget.x = this.x + this.width/2 - this.barbellTarget.width/2;
+            this.barbellTarget.y = this.y - this.barbellHoldHeight - this.barbellTarget.height;
+            
+            if (this.barbellTimer <= 0) {
+                this.barbellPhase = 'carry';
+                const characterConfig = CHARACTERS.find(char => char.name === this.name);
+                this.barbellCarryTime = characterConfig ? characterConfig.barbell_carry_time : 180;
+                console.log(`🏋️ ${this.name} держит ${this.barbellTarget.name} как штангу горизонтально!`);
+            }
+            break;
+            
+        case 'carry':
+            // Фаза ношения - цель лежит ГОРИЗОНТАЛЬНО над головой
+            this.barbellCarryTime--;
+            
+            // 🏋️ НОВОЕ: Цель лежит горизонтально над качком
+            this.barbellTarget.x = this.x + this.width/2 - this.barbellTarget.width/2;
+            this.barbellTarget.y = this.y - 80 - this.barbellTarget.height;
+            
+            // 🏋️ НОВОЕ: Делаем цель горизонтальной (поворачиваем на 90 градусов)
+            this.barbellTarget.isHorizontal = true;
+            this.barbellTarget.horizontalRotation = Math.PI / 2; // 90 градусов
+            
+            // Качок двигается медленнее с грузом
+            this.moveSpeed = this.originalMuscleSpeed * 0.5;
+            
+            // 🏋️ НОВОЕ: Проверяем ПКМ для ручного броска
+            if (this === player && this.manualThrowRequested) {
+                this.executeBarbellThrow();
+                this.manualThrowRequested = false;
+                return;
+            }
+            
+            // Автоматический бросок по истечении времени
+            if (this.barbellCarryTime <= 0) {
+                this.executeBarbellThrow();
+            }
+            break;
+            
+        case 'throw':
+            // Фаза броска
+            if (this.barbellTimer <= 0) {
+                this.endBarbellUse();
+            }
+            break;
+    }
+}
+
+// 🏋️ ВЫПОЛНЕНИЕ БРОСКА ЖИВОЙ ШТАНГИ
+executeBarbellThrow() {
+    if (!this.barbellTarget) return;
+    
+    console.log(`🏋️💥 ${this.name} БРОСАЕТ ${this.barbellTarget.name} как штангу!`);
+    
+    const target = this.barbellTarget;
+    
+    // МОЩНЫЙ БРОСОК
+    const throwDirection = this.facingRight ? 1 : -1;
+    target.velocityX = throwDirection * 40; // Сильный горизонтальный бросок
+    target.velocityY = -20; // Высокий подброс
+    
+    // Урон от броска штанги
+    if (target.takeDamage) {
+        target.takeDamage(60); // Мощный урон
+    }
+    
+    // Длительное оглушение
+    target.stunned = 120; // 2 секунды оглушения
+    target.knockback = throwDirection * 30;
+    target.screenShake = Math.max(target.screenShake, 20);
+    this.screenShake = Math.max(this.screenShake, 15);
+    
+    // Эффекты
+    this.createMuscleParticles(target.x + target.width/2, target.y + target.height/2);
+    
+    console.log(`🏋️💥 ЖИВАЯ ШТАНГА! Мощный бросок! Урон: 60`);
+    
+    // Переходим к завершению
+    this.barbellPhase = 'throw';
+    this.barbellTimer = 20;
+}
+
+// 🏋️ ЗАВЕРШЕНИЕ ИСПОЛЬЗОВАНИЯ ШТАНГИ
+// 🏋️ ЗАВЕРШЕНИЕ ИСПОЛЬЗОВАНИЯ ШТАНГИ
+endBarbellUse() {
+    // 🏋️ НОВОЕ: Возвращаем цель в нормальное положение
+    if (this.barbellTarget) {
+        this.barbellTarget.isHorizontal = false;
+        this.barbellTarget.horizontalRotation = 0;
+    }
+    
+    this.isUsingBarbell = false;
+    this.barbellPhase = 'none';
+    this.barbellTarget = null;
+    this.barbellHoldHeight = 0;
+    this.barbellCarryTime = 0;
+    
+    // Возвращаем нормальную скорость качка
+    const characterConfig = CHARACTERS.find(char => char.name === this.name);
+    const speedMultiplier = characterConfig ? characterConfig.muscleSpeedMultiplier : 0.8;
+    this.moveSpeed = this.originalMuscleSpeed * speedMultiplier;
+    
+    console.log(`🏋️ ${this.name} закончил использование живой штанги`);
+}
+
+// 🏋️ СОЗДАНИЕ ЭФФЕКТА ТРАНСФОРМАЦИИ
+createMuscleTransformEffect(x, y) {
+    if (!this.muscleParticles) {
+        this.muscleParticles = [];
+    }
+    
+    // Энергетические частицы трансформации
+    for (let i = 0; i < 15; i++) {
+        const angle = (i / 15) * Math.PI * 2;
+        const particle = {
+            x: x + (Math.random() - 0.5) * 30,
+            y: y + (Math.random() - 0.5) * 30,
+            velocityX: Math.cos(angle) * 4,
+            velocityY: Math.sin(angle) * 4 - 2,
+            life: 60 + Math.random() * 40,
+            maxLife: 100,
+            size: 4 + Math.random() * 3,
+            color: Math.random() < 0.5 ? 'gold' : 'orange'
+        };
+        
+        this.muscleParticles.push(particle);
+    }
+}
+
+// 🏋️ СОЗДАНИЕ ЧАСТИЦ КАЧКА
+createMuscleParticles(x, y) {
+    if (!this.muscleParticles) {
+        this.muscleParticles = [];
+    }
+    
+    for (let i = 0; i < 3; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const particle = {
+            x: x + (Math.random() - 0.5) * 40,
+            y: y + (Math.random() - 0.5) * 40,
+            velocityX: Math.cos(angle) * 2,
+            velocityY: Math.sin(angle) * 2 - 1,
+            life: 40 + Math.random() * 20,
+            maxLife: 60,
+            size: 3 + Math.random() * 2,
+            color: Math.random() < 0.5 ? 'gold' : 'red'
+        };
+        
+        this.muscleParticles.push(particle);
+    }
+}
+
+// 🏋️ ОБНОВЛЕНИЕ ЧАСТИЦ КАЧКА
+updateMuscleParticles() {
+    if (!this.muscleParticles) return;
+    
+    for (let i = this.muscleParticles.length - 1; i >= 0; i--) {
+        const particle = this.muscleParticles[i];
+        
+        particle.x += particle.velocityX;
+        particle.y += particle.velocityY;
+        particle.velocityY += 0.1; // Небольшая гравитация
+        particle.life--;
+        
+        if (particle.life <= 0) {
+            this.muscleParticles.splice(i, 1);
+        }
+    }
+}
+
+// 🏋️ РИСОВАНИЕ ЭФФЕКТОВ КАЧКА
+drawMuscleEffects(ctx, drawX, drawY) {
+    if (this.name !== "Lyron") return;
+    
+    // Эффект трансформации
+    if (this.isMuscle && this.muscleGlow > 0) {
+        const centerX = drawX + this.width/2;
+        const centerY = drawY + this.height/2;
+        const glowIntensity = this.muscleGlow / 60;
+        
+        // Золотое свечение качка
+        ctx.shadowColor = 'rgba(255, 215, 0, 0.8)';
+        ctx.shadowBlur = 20;
+        
+        ctx.strokeStyle = `rgba(255, 215, 0, ${glowIntensity})`;
+        ctx.lineWidth = 6;
+        ctx.strokeRect(drawX - 3, drawY - 3, this.width + 6, this.height + 6);
+        
+        ctx.shadowBlur = 0;
+        
+        // Золотые искры вокруг качка
+        for (let i = 0; i < 8; i++) {
+            const angle = (i / 8) * Math.PI * 2 + Date.now() * 0.01;
+            const sparkX = centerX + Math.cos(angle) * 50;
+            const sparkY = centerY + Math.sin(angle) * 50;
+            
+            ctx.fillStyle = `rgba(255, 215, 0, ${glowIntensity * 0.8})`;
+            ctx.beginPath();
+            ctx.arc(sparkX, sparkY, 3, 0, 2 * Math.PI);
+            ctx.fill();
+        }
+    }
+    
+    // Индикация живой штанги
+    if (this.isUsingBarbell && this.barbellTarget) {
+        const targetCenterX = this.barbellTarget.x + this.barbellTarget.width/2;
+        const targetCenterY = this.barbellTarget.y + this.barbellTarget.height/2;
+        
+        // Золотая аура вокруг цели-штанги
+        ctx.strokeStyle = 'rgba(255, 215, 0, 0.8)';
+        ctx.lineWidth = 4;
+        ctx.setLineDash([5, 5]);
+        ctx.strokeRect(this.barbellTarget.x - 5, this.barbellTarget.y - 5, 
+                      this.barbellTarget.width + 10, this.barbellTarget.height + 10);
+        ctx.setLineDash([]);
+        
+        // Текст над целью
+        ctx.fillStyle = 'rgba(255, 215, 0, 0.9)';
+        ctx.font = 'bold 16px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('🏋️ ШТАНГА', targetCenterX, targetCenterY - 40);
+    }
+}
+
+drawMuscleParticles(ctx) {
+    if (!this.muscleParticles || this.name !== "Lyron") return;
+    
+    this.muscleParticles.forEach(particle => {
+        const alpha = particle.life / particle.maxLife;
+        
+        ctx.fillStyle = particle.color === 'gold' ? `rgba(255, 215, 0, ${alpha})` : `rgba(255, 69, 0, ${alpha})`;
+        ctx.beginPath();
+        ctx.arc(particle.x, particle.y, particle.size, 0, 2 * Math.PI);
+        ctx.fill();
+        
+        // Свечение частицы
+        ctx.shadowColor = particle.color === 'gold' ? 'rgba(255, 215, 0, 0.6)' : 'rgba(255, 69, 0, 0.6)';
+        ctx.shadowBlur = 8;
+        ctx.fillStyle = `rgba(255, 255, 255, ${alpha * 0.5})`;
+        ctx.beginPath();
+        ctx.arc(particle.x, particle.y, particle.size * 0.5, 0, 2 * Math.PI);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+    });
+}
+
+drawMuscleCooldown(ctx, x, y) {
+    if (this.name !== "Lyron" || this.muscleCooldown <= 0) return;
+    
+    const cooldownPercent = this.muscleCooldown / 480;
+    ctx.fillStyle = 'rgba(255, 215, 0, 0.8)';
+    ctx.fillRect(x - 30, y - 105, 60 * (1 - cooldownPercent), 6);
+    
+    if (cooldownPercent > 0.5) {
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+        ctx.font = 'bold 12px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('🏋️', x, y - 110);
+    }
+}
+
+// ====== 👻 НОВЫЕ МЕТОДЫ ДЛЯ BANSHEE SCREAM KRISTINA ======
+
+// 👻 МЕТОД АКТИВАЦИИ BANSHEE SCREAM
+bansheeScream() {
+    if (this.screamCooldown > 0 || this.name !== "Kristina") {
+        console.log(`❌ Banshee Scream недоступен! Кулдаун: ${Math.ceil(this.screamCooldown / 60)} сек`);
+        return false;
+    }
+    
+    if (!gameRunning || !gameStarted) {
+        console.log('❌ Игра не активна!');
+        return false;
+    }
+    
+    // Определяем цель (противника)
+    let target;
+    if (this === player && bot) {
+        target = bot;
+    } else if (this === bot && player) {
+        target = player;
+    } else {
+        console.log('❌ Цель для Banshee Scream не найдена!');
+        return false;
+    }
+    
+    console.log(`👻 ${this.name} издаёт ПРОНЗИТЕЛЬНЫЙ КРИК БАНШИ!`);
+    
+    // Получаем настройки из конфигурации
+    const characterConfig = CHARACTERS.find(char => char.name === this.name);
+    
+    // Активируем крик
+    this.bansheeScreamActive = true;
+    this.isScreaming = true;
+    this.screamDuration = characterConfig ? characterConfig.screamDuration : 180;
+    this.screamCooldown = characterConfig ? characterConfig.abilityCooldown : 420;
+    
+    // Немедленный эффект крика
+    this.executeScreamAttack(target);
+    
+    // Создаём начальные звуковые волны
+    this.createScreamWaves();
+    
+    console.log(`👻 Banshee Scream активирован на ${this.screamDuration/60} секунд!`);
+    return true;
+}
+
+// 👻 МЕТОД ВЫПОЛНЕНИЯ АТАКИ КРИКОМ
+executeScreamAttack(target) {
+    const characterConfig = CHARACTERS.find(char => char.name === this.name);
+    const damage = characterConfig ? characterConfig.screamDamage : 35;
+    const stunDuration = characterConfig ? characterConfig.screamStunDuration : 90;
+    const knockbackForce = characterConfig ? characterConfig.screamKnockback : 30;
+    const screamRadius = characterConfig ? characterConfig.screamRadius : 250;
+    
+    // Проверяем дистанцию до цели
+    const distance = Math.abs(this.x - target.x);
+    
+    if (distance <= screamRadius) {
+        // Наносим урон
+        if (target.takeDamage) {
+            target.takeDamage(damage);
+        }
+        
+        // Оглушаем цель
+        target.stunned = stunDuration;
+        
+        // Мощное отталкивание
+        const knockbackDirection = (target.x > this.x) ? 1 : -1;
+        target.knockback += knockbackDirection * knockbackForce;
+        target.velocityX = knockbackDirection * 25; // Сильный отброс
+        target.velocityY = Math.min(target.velocityY, -12); // Подбрасываем вверх
+        
+        // Эффекты экрана
+        target.screenShake = Math.max(target.screenShake, 20);
+        this.screenShake = Math.max(this.screenShake, 15);
+        
+        // Создаём эффекты ужаса
+        this.createScreamEffects(target.x + target.width/2, target.y + target.height/2);
+        
+        console.log(`👻💥 Banshee Scream попал! Урон: ${damage}, Оглушение: ${stunDuration/60} сек`);
+        
+        return 'hit';
+    } else {
+        console.log(`👻❌ Banshee Scream промахнулся! Дистанция: ${distance}, радиус: ${screamRadius}`);
+        return 'miss';
+    }
+}
+
+// 👻 МЕТОД СОЗДАНИЯ ЗВУКОВЫХ ВОЛН
+createScreamWaves() {
+    if (!this.screamWaves) {
+        this.screamWaves = [];
+    }
+    
+    // Создаём несколько концентрических волн
+    for (let i = 0; i < 5; i++) {
+        const wave = {
+            x: this.x + this.width/2,
+            y: this.y + this.height/2,
+            radius: 20 + i * 15,
+            maxRadius: 300 + i * 50,
+            speed: 8 + i * 2,
+            alpha: 1 - i * 0.15,
+            waveIndex: i,
+            life: 60,
+            maxLife: 60
+        };
+        
+        this.screamWaves.push(wave);
+    }
+}
+
+// 👻 МЕТОД ОБНОВЛЕНИЯ ЗВУКОВЫХ ВОЛН
+updateScreamWaves() {
+    if (!this.screamWaves) return;
+    
+    for (let i = this.screamWaves.length - 1; i >= 0; i--) {
+        const wave = this.screamWaves[i];
+        
+        wave.radius += wave.speed;
+        wave.life--;
+        wave.alpha = (wave.life / wave.maxLife) * (1 - wave.waveIndex * 0.15);
+        
+        // Удаляем волну если она исчезла
+        if (wave.radius >= wave.maxRadius || wave.life <= 0) {
+            this.screamWaves.splice(i, 1);
+        }
+    }
+}
+
+// 👻 МЕТОД ОБНОВЛЕНИЯ БАНШИ КРИКА
+updateBansheeScream() {
+    if (!this.bansheeScreamActive) return;
+    
+    // Периодически создаём новые волны во время крика
+    if (this.screamDuration % 20 === 0) { // Каждые 20 кадров
+        this.createScreamWaves();
+    }
+    
+    // Создаём эффекты ужаса
+    if (this.screamDuration % 15 === 0) { // Каждые 15 кадров
+        this.createScreamEffects(this.x + this.width/2, this.y + this.height/2);
+    }
+}
+
+// 👻 МЕТОД СОЗДАНИЯ ЭФФЕКТОВ УЖАСА
+createScreamEffects(x, y) {
+    if (!this.screamEffects) {
+        this.screamEffects = [];
+    }
+    
+    // Создаём эффекты черепов и призраков
+    for (let i = 0; i < 8; i++) {
+        const angle = (i / 8) * Math.PI * 2;
+        const distance = 50 + Math.random() * 100;
+        
+        const effect = {
+            x: x + Math.cos(angle) * distance,
+            y: y + Math.sin(angle) * distance,
+            velocityX: Math.cos(angle) * 2,
+            velocityY: Math.sin(angle) * 2 - 1,
+            life: 80 + Math.random() * 40,
+            maxLife: 120,
+            size: 15 + Math.random() * 10,
+            rotation: Math.random() * Math.PI * 2,
+            rotationSpeed: (Math.random() - 0.5) * 0.2,
+            type: Math.random() < 0.5 ? 'skull' : 'ghost'
+        };
+        
+        this.screamEffects.push(effect);
+    }
+}
+
+// 👻 МЕТОД ОБНОВЛЕНИЯ ЭФФЕКТОВ УЖАСА
+updateScreamEffects() {
+    if (!this.screamEffects) return;
+    
+    for (let i = this.screamEffects.length - 1; i >= 0; i--) {
+        const effect = this.screamEffects[i];
+        
+        effect.x += effect.velocityX;
+        effect.y += effect.velocityY;
+        effect.velocityY += 0.1; // Небольшая гравитация
+        effect.rotation += effect.rotationSpeed;
+        effect.life--;
+        
+        // Эффект плавания призраков
+        if (effect.type === 'ghost') {
+            effect.x += Math.sin(effect.life * 0.1) * 0.5;
+            effect.y += Math.cos(effect.life * 0.08) * 0.3;
+        }
+        
+        if (effect.life <= 0) {
+            this.screamEffects.splice(i, 1);
+        }
+    }
+}
+
+// 👻 МЕТОД РИСОВАНИЯ ЗВУКОВЫХ ВОЛН
+drawScreamWaves(ctx) {
+    if (!this.screamWaves || this.name !== "Kristina") return;
+    
+    this.screamWaves.forEach(wave => {
+        // Основная звуковая волна
+        ctx.strokeStyle = `rgba(128, 0, 128, ${wave.alpha * 0.8})`;
+        ctx.lineWidth = 6 - wave.waveIndex;
+        ctx.setLineDash([10, 5]);
+        
+        ctx.beginPath();
+        ctx.arc(wave.x, wave.y, wave.radius, 0, 2 * Math.PI);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        
+        // Внутреннее свечение
+        ctx.strokeStyle = `rgba(255, 0, 255, ${wave.alpha * 0.6})`;
+        ctx.lineWidth = 3;
+        
+        ctx.beginPath();
+        ctx.arc(wave.x, wave.y, wave.radius * 0.8, 0, 2 * Math.PI);
+        ctx.stroke();
+        
+        // Искры по краю волны
+        const sparkCount = Math.floor(wave.radius / 20);
+        for (let i = 0; i < sparkCount; i++) {
+            const angle = (i / sparkCount) * Math.PI * 2 + wave.life * 0.1;
+            const sparkX = wave.x + Math.cos(angle) * wave.radius;
+            const sparkY = wave.y + Math.sin(angle) * wave.radius;
+            
+            ctx.fillStyle = `rgba(255, 0, 255, ${wave.alpha})`;
+            ctx.beginPath();
+            ctx.arc(sparkX, sparkY, 2, 0, 2 * Math.PI);
+            ctx.fill();
+        }
+    });
+}
+
+// 👻 МЕТОД РИСОВАНИЯ ЭФФЕКТОВ УЖАСА
+drawScreamEffects(ctx, drawX, drawY) {
+    if (!this.screamEffects || this.name !== "Kristina") return;
+    
+    this.screamEffects.forEach(effect => {
+        const alpha = effect.life / effect.maxLife;
+        
+        ctx.save();
+        ctx.translate(effect.x, effect.y);
+        ctx.rotate(effect.rotation);
+        ctx.globalAlpha = alpha;
+        
+        if (effect.type === 'skull') {
+            // Рисуем череп
+            ctx.font = `bold ${effect.size}px Arial`;
+            ctx.textAlign = 'center';
+            ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
+            ctx.fillText('💀', 0, effect.size/3);
+            
+            // Свечение черепа
+            ctx.shadowColor = 'rgba(128, 0, 128, 0.8)';
+            ctx.shadowBlur = 15;
+            ctx.fillText('💀', 0, effect.size/3);
+            
+        } else {
+            // Рисуем призрака
+            ctx.font = `bold ${effect.size}px Arial`;
+            ctx.textAlign = 'center';
+            ctx.fillStyle = `rgba(200, 200, 255, ${alpha * 0.8})`;
+            ctx.fillText('👻', 0, effect.size/3);
+            
+            // Свечение призрака
+            ctx.shadowColor = 'rgba(200, 200, 255, 0.6)';
+            ctx.shadowBlur = 10;
+            ctx.fillText('👻', 0, effect.size/3);
+        }
+        
+        ctx.restore();
+    });
+    
+    // Эффект крика самой Kristina
+    if (this.isScreaming) {
+        const centerX = drawX + this.width/2;
+        const centerY = drawY + this.height/2;
+        
+        // Пульсирующая аура ужаса
+        const pulseSize = 80 + Math.sin(Date.now() * 0.02) * 30;
+        const gradient = ctx.createRadialGradient(
+            centerX, centerY, 0,
+            centerX, centerY, pulseSize
+        );
+        gradient.addColorStop(0, 'rgba(128, 0, 128, 0.4)');
+        gradient.addColorStop(0.5, 'rgba(255, 0, 255, 0.2)');
+        gradient.addColorStop(1, 'rgba(128, 0, 128, 0)');
+        
+        ctx.fillStyle = gradient;
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, pulseSize, 0, 2 * Math.PI);
+        ctx.fill();
+        
+        // Текст "КРИК!" над головой
+        ctx.fillStyle = 'rgba(255, 0, 255, 0.9)';
+        ctx.font = 'bold 24px Arial';
+        ctx.textAlign = 'center';
+        ctx.strokeStyle = 'rgba(0, 0, 0, 0.8)';
+        ctx.lineWidth = 4;
+        
+        const screamText = '!';
+        ctx.strokeText(screamText, centerX, centerY - 80);
+        ctx.fillText(screamText, centerX, centerY - 80);
+    }
+}
+
+// 👻 МЕТОД РИСОВАНИЯ КУЛДАУНА
+drawBansheeScreamCooldown(ctx, x, y) {
+    if (this.name !== "Kristina" || this.screamCooldown <= 0) return;
+    
+    const cooldownPercent = this.screamCooldown / 420;
+    ctx.fillStyle = 'rgba(128, 0, 128, 0.8)';
+    ctx.fillRect(x - 30, y - 85, 60 * (1 - cooldownPercent), 6);
+    
+    // Иконка способности
+    if (cooldownPercent > 0.5) {
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+        ctx.font = 'bold 12px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('👻', x, y - 90);
+    }
+}
 // 💖 МЕТОДЫ ДЛЯ HEART PULSE AASHI
 heartPulse() {
     if (this.heartPulseCooldown > 0 || this.name !== "Aashi") {
@@ -6050,7 +7222,8 @@ class BotAI {
         }
         
         // Прыжки для динамики и избежания атак
-        if (this.bot.onGround) {
+        // Прыжки для динамики и избежания атак
+        if (this.bot.onGround || (this.bot.name === "sguzeva" && this.bot.jumpsUsed < 2)) {
             let jumpChance = 0.03;
             
             // Увеличиваем шанс прыжка если игрок атакует
@@ -6061,6 +7234,11 @@ class BotAI {
             // Прыжок для преодоления препятствий
             if (distance > 100 && Math.abs(this.bot.velocityX) < 2) {
                 jumpChance = 0.2;
+            }
+            
+            // 🦘 СПЕЦИАЛЬНО ДЛЯ SGUZEVA: увеличиваем шанс второго прыжка
+            if (this.bot.name === "sguzeva" && this.bot.jumpsUsed === 1 && !this.bot.onGround) {
+                jumpChance = 0.15; // 15% шанс использовать двойной прыжок
             }
             
             if (Math.random() < jumpChance) {
@@ -6076,6 +7254,40 @@ class BotAI {
     
     executeAttack(distance) {
     this.bot.stopBlock();
+    
+    // 🔫 АВТОМАТ ДЛЯ CRIS-БОТА
+    if (this.bot.name === "cris" && !this.bot.isRifleMode && Math.random() < 0.3) {
+        // 30% шанс достать автомат
+        if (this.bot.rifleMode()) {
+            console.log(`🤖🔫 ${this.bot.name} (ИИ) достаёт автомат!`);
+            return;
+        }
+    }
+
+    if (this.bot.name === "cris" && this.bot.isRifleMode) {
+        // Стреляем из автомата
+        if (this.bot.rifleFireCooldown === 0 && this.bot.ammo > 0) {
+            if (this.bot.fireRifle()) {
+                console.log(`🤖🔫 ${this.bot.name} (ИИ) стреляет из автомата!`);
+            }
+        }
+        
+        // Перезаряжаемся если нет патронов
+        if (this.bot.ammo <= 0 && !this.bot.isReloading) {
+            this.bot.startReload();
+        }
+        
+        // Иногда убираем автомат
+        if (Math.random() < 0.05) { // 5% шанс каждый кадр
+            this.bot.rifleMode();
+            console.log(`🤖✊ ${this.bot.name} (ИИ) убирает автомат!`);
+            return;
+        }
+        
+        return; // Не используем обычные атаки в режиме автомата
+    }
+    
+    // ⚡ СПОСОБНОСТИ ВСЕХ ПЕРСОНАЖЕЙ с учетом сложности
     
     // ⚡ СПОСОБНОСТИ ВСЕХ ПЕРСОНАЖЕЙ с учетом сложности
     
@@ -6115,17 +7327,6 @@ class BotAI {
         }
     }
     
-    // 4. MAGNITUDE WAVE для Lyron
-    if (this.bot.name === "Lyron" && this.bot.abilityCooldown === 0 && distance > 100) {
-        let waveChance = this.abilityChance || 0.3;
-        
-        if (Math.random() < waveChance) {
-            if (this.bot.useMagnitudeWave()) {
-                console.log(`🤖🌊 ${this.bot.name} использует Magnitude Wave! (Шанс: ${Math.round(waveChance * 100)}%)`);
-                return;
-            }
-        }
-    }
     
     // 🤼 НОВОЕ: POWER GRAPPLE для Burhan
     if (this.bot.name === "Burhan" && this.bot.grappleCooldown === 0 && distance <= 100) {
@@ -6197,6 +7398,18 @@ if (this.bot.name === "Aashi" && this.bot.heartPulseCooldown === 0 && this.bot.h
     if (Math.random() < heartChance) {
         if (this.bot.heartPulse()) {
             console.log(`🤖💖 ${this.bot.name} использует Heart Pulse! (Шанс: ${Math.round(heartChance * 100)}%)`);
+            return;
+        }
+    }
+}
+
+// 🍌 НОВОЕ: MONSTER TRANSFORM для effgennn.l33t
+if (this.bot.name === "effgennn.l33t" && this.bot.monsterCooldown === 0 && !this.bot.isMonster && this.bot.health < 150) {
+    let transformChance = this.abilityChance || 0.5; // Выше шанс когда мало здоровья
+    
+    if (Math.random() < transformChance) {
+        if (this.bot.monsterTransform()) {
+            console.log(`🤖🍌 ${this.bot.name} превращается в монстра! (Шанс: ${Math.round(transformChance * 100)}%)`);
             return;
         }
     }
@@ -6488,13 +7701,13 @@ document.addEventListener('keydown', function(e) {
 
         case 81: // Q — уникальные способности персонажей
             if (player.name === "Lyron") {
-                const used = player.useMagnitudeWave();
-                if (used) {
-                    showKeyPress('Q - MAGNITUDE WAVE! 🌊');
-                    console.log('🌊 Lyron активировал Magnitude Wave!');
+                const transformed = player.muscleTransform();
+                if (transformed) {
+                    showKeyPress('Q - MUSCLE TRANSFORM! 🏋️💥');
+                    console.log('🏋️ Lyron активировал Muscle Transform!');
                 } else {
-                    showKeyPress('Q - НА КУЛДАУНЕ');
-                    console.log('❌ Magnitude Wave на кулдауне');
+                    showKeyPress('Q - ТРАНСФОРМАЦИЯ НА КУЛДАУНЕ');
+                    console.log('❌ Muscle Transform на кулдауне');
                 }
             } else if (player.name === "Tom.J") {
                 const thrown = player.throwSlime();
@@ -6593,8 +7806,48 @@ document.addEventListener('keydown', function(e) {
         showKeyPress('Q - СЕРДЦЕ НА КУЛДАУНЕ');
         console.log('❌ Heart Pulse на кулдауне');
     }
-    
+} else if (player.name === "sguzeva") {
+    // 🦘 НОВОЕ ДЛЯ SGUZEVA: Информация о двойном прыжке
+    const jumpsLeft = 2 - player.jumpsUsed;
+    if (jumpsLeft > 0) {
+        showKeyPress(`Q - ДВОЙНОЙ ПРЫЖОК! 🦘 (${jumpsLeft} прыжков)`);
+        console.log(`🦘 sguzeva: доступно ${jumpsLeft} прыжков`);
+    } else {
+        showKeyPress('Q - ПРЫЖКИ ИСЧЕРПАНЫ');
+        console.log('❌ sguzeva: все прыжки использованы');
+    }
+} else if (player.name === "Kristina") {
+    // 👻 НОВОЕ ДЛЯ KRISTINA:
+    const screamUsed = player.bansheeScream();
+    if (screamUsed) {
+        showKeyPress('Q - BANSHEE SCREAM! 👻💥');
+        console.log('👻 Kristina издаёт пронзительный крик банши!');
+    } else {
+        showKeyPress('Q - КРИК НА КУЛДАУНЕ');
+        console.log('❌ Banshee Scream на кулдауне');
+    }
+} else if (player.name === "effgennn.l33t") {
+    const transformed = player.monsterTransform();
+    if (transformed) {
+        showKeyPress('Q - MONSTER TRANSFORM! 🍌💥');
+        console.log('🍌 effgennn.l33t активировал Monster Transform!');
+    } else {
+        showKeyPress('Q - ТРАНСФОРМАЦИЯ НА КУЛДАУНЕ');
+        console.log('❌ Monster Transform на кулдауне');
+    }
+} else if (player.name === "cris") {
+    const switched = player.rifleMode();
+    if (switched) {
+        if (player.isRifleMode) {
+            showKeyPress('Q - АВТОМАТ ГОТОВ! 🔫');
+            console.log('🔫 cris достал автомат!');
+        } else {
+            showKeyPress('Q - РУКОПАШНЫЙ БОЙ! ✊');
+            console.log('✊ cris убрал автомат!');
+        }
+    }
 } else {
+    
     showKeyPress('Q - НЕТ СПОСОБНОСТИ');
     console.log(`❌ У ${player.name} нет уникальной способности`);
 }
@@ -6628,6 +7881,7 @@ document.addEventListener('keyup', function(e) {
 });
 
 // УПРАВЛЕНИЕ МЫШЬЮ
+// УПРАВЛЕНИЕ МЫШЬЮ
 canvas.addEventListener('mousedown', function(e) {
     if (!gameRunning || !gameStarted || !player || !bot) {
         showKeyPress('Игра не активна');
@@ -6637,50 +7891,78 @@ canvas.addEventListener('mousedown', function(e) {
     e.preventDefault();
     e.stopPropagation();
     
-    if (e.button === 0) { 
-        let hitResult;
+    if (e.button === 0) { // Левая кнопка мыши
+        // 🔫 CRIS СТРЕЛЯЕТ ВСЕГДА
+        if (player.name === "cris" && player.isRifleMode) {
+            const bullet = {
+                x: player.x + (player.facingRight ? player.width : 0),
+                y: player.y + player.height / 2,
+                velocityX: (player.facingRight ? 1 : -1) * 20,
+                velocityY: 0,
+                damage: 15,
+                hasHit: false,
+                shooter: player,
+                life: 300,
+                size: 6
+            };
+            
+            if (!player.bullets) player.bullets = [];
+            player.bullets.push(bullet);
+            showKeyPress('ЛКМ - ВЫСТРЕЛ! 🔫');
+            return;
+        }
         
+        // ОБЫЧНЫЕ АТАКИ
         if (player.canCounter > 0) {
             hitResult = player.counterAttack(bot);
             if (hitResult === 'hit') {
-                showKeyPress('ЛКМ - КОНТРАТАКА ПОПАЛА! 35 УРОНА!');
-                console.log(`💥 КОНТРАТАКА! Критический урон: 35, Здоровье бота: ${bot.health}`);
-                
-                canvas.classList.add('counter-attack-effect');
-                setTimeout(() => {
-                    canvas.classList.remove('counter-attack-effect');
-                }, 500);
+                showKeyPress('ЛКМ - КОНТРАТАКА ПОПАЛА!');
             }
         } else {
             hitResult = player.lightAttack(bot);
             if (hitResult === 'hit') {
                 showKeyPress('ЛКМ - БЫСТРЫЙ УДАР ПОПАЛ!');
-                console.log(`⚡ Быстрый удар попал! Урон: 15, Здоровье бота: ${bot.health}`);
             } else if (hitResult === 'parried') {
                 showKeyPress('ЛКМ - ПАРИРОВАН!');
-                console.log(`🛡️ Удар парирован! Бот может контратаковать!`);
             } else if (hitResult === 'blocked') {
                 showKeyPress('ЛКМ - ЗАБЛОКИРОВАН');
-                console.log(`🛡️ Удар заблокирован! Урон: 5`);
             } else {
                 showKeyPress('ЛКМ - МИМО');
-                console.log(`❌ Быстрый удар не попал`);
-            }
-            
-            if (hitResult === 'hit' || hitResult === 'blocked') {
-                canvas.classList.add('light-attack-effect');
-                setTimeout(() => {
-                    canvas.classList.remove('light-attack-effect');
-                }, 150);
-            } else if (hitResult === 'parried') {
-                canvas.classList.add('parry-effect');
-                setTimeout(() => {
-                    canvas.classList.remove('parry-effect');
-                }, 300);
             }
         }
+    } else if (e.button === 2) { // Правая кнопка мыши
+        console.log('💥 Попытка тяжелой атаки...');
+        // 🏋️ НОВОЕ: Ручной бросок штанги для Lyron
+if (player.name === "Lyron" && player.isMuscle && player.isUsingBarbell && player.barbellPhase === 'carry') {
+    console.log(`🏋️ ${player.name} бросает живую штангу по ПКМ!`);
+    player.manualThrowRequested = true;
+    showKeyPress('ПКМ - БРОСОК ШТАНГИ! 🏋️💥');
+    return;
+}
+        // 🔫 БЫСТРАЯ СТРЕЛЬБА ДЛЯ CRIS
+        if (player.name === "cris" && player.isRifleMode) {
+            console.log(`🔫 cris быстро стреляет! Патронов: ${player.ammo}`);
+            
+            // Быстрая стрельба - игнорируем небольшой кулдаун
+            if (player.rifleFireCooldown <= 3 && player.ammo > 0) {
+                player.rifleFireCooldown = 0; // Сбрасываем кулдаун для быстрой стрельбы
+                const fired = player.fireRifle();
+                if (fired) {
+                    showKeyPress('ПКМ - БЫСТРЫЙ ОГОНЬ! 🔫💥');
+                    console.log(`🔫 cris ведёт быстрый огонь!`);
+                }
+            } else if (player.ammo <= 0) {
+                showKeyPress('ПКМ - ПЕРЕЗАРЯДКА!');
+                if (!player.isReloading) {
+                    player.startReload();
+                }
+            } else {
+                showKeyPress('ПКМ - ГОТОВИТСЯ К ВЫСТРЕЛУ...');
+            }
+            return;
+        }
         
-    } else if (e.button === 2) { 
+        // ОБЫЧНАЯ ТЯЖЕЛАЯ АТАКА
         const hitResult = player.heavyAttack(bot);
         
         if (hitResult === 'hit') {
@@ -6694,7 +7976,7 @@ canvas.addEventListener('mousedown', function(e) {
             console.log(`🛡️ Тяжелый удар заблокирован! Урон: 8`);
         } else {
             showKeyPress('ПКМ - МИМО');
-            console.log(`❌ Тяжелый удар не попал`);
+            console.log(`❌ Тяжелый удар не попал, дистанция слишком большая`);
         }
         
         if (hitResult === 'hit' || hitResult === 'blocked') {
